@@ -59,6 +59,19 @@ Rules for running them side by side:
 - **There is only one Supabase project, and the live app uses it.** `supabase db push` from the invites branch changes production right away, while the deployed code still expects the old schema. Either make the migration additive (add `cookbook_id` and the new tables without breaking `owner_id` queries, and drop old columns only after the new code is deployed), or create a second free Supabase project as staging first. Decide this before the first push.
 - Vercel isn't connected to the GitHub repo, so merging to `main` does **not** deploy. Connect it (Vercel dashboard → Project → Settings → Git) to get a production deploy on merge and a preview URL per PR. Previews also use the one Supabase project.
 
+## Graphics branch (`feature/graphics`, worktree `../sobremesa-graphics`)
+
+Goal: a homier, less generic look, merged in with the feature branches later. No migrations.
+- Done (`da2d80a`):
+  - Home opens on a swipeable deck of lined index cards (`RecipeDeck`, CSS scroll-snap, arrows and "Card 2 of 6").
+  - Each card shows the ingredients in the contributor's hand and ink, plus a taped `Snapshot` of them.
+  - "The whole box" (`/?view=box`) lists every recipe A–Z behind divider tabs.
+  - The recipe header has the snapshot, and its text sits on the printed lines.
+- Snapshot shows the person's initial in their ink. A real photo needs Storage, a `photo_url` column and a migration; do that after invites merges. `Snapshot` already takes `src`.
+- Verified: tsc, lint and build pass; `test:e2e` 20/20 against a production build on port 3002; screenshots at 375px.
+- Next ideas: restyle gatherings and the margin notes to match; check the deck on a real iPhone (swipe vs. the edge-swipe-back gesture).
+- Merge risk: `ui.tsx` and `recipes/[id]/page.tsx` may conflict with recipe-import. Merge this after the feature branches and resolve the conflicts here.
+
 ## Open questions
 
 1. Deadline risk: both features land the day of submission. Recommended order:
