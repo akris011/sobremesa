@@ -13,7 +13,9 @@ const text = (fd: FormData, key: string) => String(fd.get(key) ?? "").trim();
 const lines = (fd: FormData, key: string) =>
   text(fd, key)
     .split("\n")
-    .map((l) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, "").trim())
+    // Strip pasted bullets and step numbers ("- ", "2) ", "3. "), but only when a
+    // space follows the number, so quantities like "1.5 cups" stay intact.
+    .map((l) => l.replace(/^\s*(?:[-•*]\s*|\d+[.)]\s+)/, "").trim())
     .filter(Boolean);
 
 async function requireUser(supabase: Supabase) {
