@@ -1,27 +1,25 @@
 # NOTES
 
 Session handoff. Read this first; update it before ending a session.
-Last updated: 2026-10-18, end of session 1. Deadline: Mon 2026-10-19, 11:59 pm (submission form in `technify-training-swe.pdf` §10.4).
+Last updated: 2026-10-18, end of session 2. Deadline: Mon 2026-10-19, 11:59 pm (submission form in `technify-training-swe.pdf` §10.4).
 
 ## Where things stand
 
-- Branch `feature/mvp`, draft PR #1 → `main`. Repo `akris011/sobremesa` is **private** (must be public before submitting).
+- Branch `feature/mvp`, draft PR #1 → `main`. 7 local commits not pushed yet. Repo `akris011/sobremesa` is **private** (must be public before submitting).
 - Supabase project `sobremesa`, ref `nzvpdlddjywgsbnlkfkj` (US East). Migrations applied with `supabase db push`. Email confirmation is off. The auth `site_url` is still `http://127.0.0.1:3000`.
-- Local secrets: `.env.local` (URL + publishable key), `.env.supabase.local` (DB password). Both gitignored.
-- **Not deployed yet.** Vercel CLI login is needed: run `npx vercel login` in a normal Terminal (the `!` prefix in Claude Code can't do browser logins).
+- Vercel: logged in as `akris011`. The project `sobremesa` is linked (`.vercel/`, gitignored). `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set for production and preview.
+- **Not deployed yet.** The agent isn't allowed to run production deploys. Anya runs `npx vercel deploy --prod --yes`.
+- Local secrets: `.env.local` (Supabase URL, publishable key, and a `VERCEL_OIDC_TOKEN` added by `vercel link`), `.env.supabase.local` (DB password). Both gitignored.
+- `SKILL.md` (frontend-design) is untracked in the repo root. It's Anya's file. If agents should use it, move it to `.claude/skills/frontend-design/SKILL.md`.
 
-## Verified (session 1)
+## Verified
 
-Headless Chromium against a production build (`npm run build && npx next start -p 3001`):
-- Visitor: sample cookbook, recipe, gatherings, family pages render. No console errors.
-- Sign up, sign in (wrong password shows an error), `?next=` return, sign out.
-- Recipe create, edit, delete. Persists after reload. "1.5 cups" kept intact. Validation errors keep the typed fields.
-- Margin note in the author's ink. Gathering create/delete. Dish assigned, can't be added twice. Gathering shows in the recipe's history with its preparer. A gathering dated today counts as upcoming.
-- No horizontal overflow at 375px or 390px.
-- RLS, tested directly against the Supabase API with the public key: 16/16 pass. Visitors and a second account can't read or write another account's rows or the sample rows; duplicate dish rejected by the database.
-- `copy_sample_cookbook()` copies 6 people, 6 recipes, 4 gatherings, 12 dishes, 9 notes; refuses if the cookbook isn't empty.
+Session 2, against a production build (`npm run build && npx next start -p 3001`):
+- `npm run test:rls`: 22/22 pass. It hits the Supabase API directly with the public key, creates its own accounts, and covers visitors, a second account, demo rows, the duplicate-dish constraint and `copy_sample_cookbook()`.
+- `npm run test:e2e`: 20/20 steps pass at 375px with no console errors. Covers signup, recipe, note, gathering, preparer, history and sign-out; then sign-in via `?next`, decimals, validation keeping the fields, edit, delete, a gathering dated today counting as upcoming, gathering delete, and no horizontal overflow.
+- Lint, `tsc` and build pass.
 
-The test scripts live outside the repo (Claude's scratchpad), so they can't be rerun from here yet. See open question 1.
+Each test run creates new Supabase accounts. Set `TEST_EMAIL="you+{tag}@gmail.com"` to make them yours and easy to delete.
 
 ## Fixed in session 1 (from the SPEC review)
 
@@ -36,13 +34,36 @@ The test scripts live outside the repo (Claude's scratchpad), so they can't be r
 - Opening someone else's private page shows "not in the book" with status 200, not 404 (streaming through `loading.tsx`). No data leaks.
 - Right after deleting a gathering, the list can show it for under a second before refreshing.
 - Delete actions don't show an error if the delete fails.
-- The dev server once stalled a request for 3.5 minutes; it never happened on the production build. If it recurs, test with `next start`.
+- The dev server once stalled a request for 3.5 minutes; it never happened on the production build.
 
-## Open questions / next steps
+## To get it on a phone (Anya)
 
-1. Move the e2e and RLS scripts into the repo (`tests/`, `npm run test:e2e`) so the security claim is reproducible? (Recommended.)
-2. Test accounts in Supabase use plus-addressed `@gmail.com` emails (`sobremesa.e2e+…`, `sobremesa.rls+…`, `sobremesa.copy+…`). Delete them before recording, and use an address Anya controls next time.
-3. Deploy to Vercel, add env vars there, then set the Supabase auth `site_url` to the Vercel URL.
-4. On-device iPhone check: safe areas, Add to Home Screen, standalone mode.
-5. Fresh-session code review of the branch against SPEC.md before merging. Session 1's review was self-review by the agent that wrote the code.
-6. README: setup and architecture. Make the repo public. Merge the PR. Record the video (under 3 min).
+1. Deploy: `npx vercel deploy --prod --yes`. Note the `https://….vercel.app` URL.
+2. Supabase auth: set `site_url` and the redirect URLs to that URL. Next session can do it via `supabase/config.toml` and `supabase config push`. Sign-in works without this because email confirmation is off, but invites and any email links need it.
+3. iPhone: open the URL in **Safari** (not Chrome; only Safari can add to the Home Screen on older iOS), then Share → Add to Home Screen. Check that it opens standalone with the icon and the bottom nav clears the home indicator. Tick the two open SPEC criteria.
+4. Push the 7 commits, make the repo public, merge PR #1.
+
+## Next tasks (parallel sessions)
+
+Briefs live in `docs/tasks/`. Each session reads this file, then its brief.
+- `docs/tasks/family-invites.md`: shared cookbooks plus a join link. Rewrites RLS; owns all migrations while it runs.
+- `docs/tasks/recipe-import.md`: photo, PDF, link or text into a prefilled recipe draft. Phase 1 adds no migrations, so it can run in parallel.
+
+Rules for running them side by side:
+- Merge PR #1 first, and branch both off `main`.
+- One git worktree per agent.
+- Only the invites branch adds migrations.
+- Each opens its own PR.
+- Run `test:rls` and `test:e2e` before every merge.
+
+## Open questions
+
+1. Deadline risk: both features land the day of submission. Recommended order:
+   1. Deploy, go public, merge the MVP and record a baseline video first.
+   2. Then build invites, and re-record if it merges by Monday evening.
+   3. Import is a bonus.
+2. Invites: reusable group-chat link (recommended) or single-use links? Can any member edit everything, or only the owner deletes?
+3. Import: OK to add the first server secret (`ANTHROPIC_API_KEY`) and pay per image? Tesseract (free) can't read handwriting usefully.
+4. Delete the old test accounts (`sobremesa.e2e+…`, `sobremesa.rls+…`, `sobremesa.copy+…` @gmail.com) in the Supabase dashboard before recording.
+5. Fresh-session code review of the branch against SPEC.md before merging (session 1 was self-review).
+6. README: setup and architecture.

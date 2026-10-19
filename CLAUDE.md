@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Sobremesa: a mobile-first family cookbook PWA built around gatherings. Recipes, the dinners they were served at, who made them, and handwritten-style margin notes in each family member's ink. Scope and acceptance criteria live in `SPEC.md`; read it before adding features.
+Sobremesa: a mobile-first family cookbook PWA built around gatherings. Recipes, the dinners they were served at, who made them, and handwritten-style margin notes in each family member's ink. Scope and acceptance criteria live in `SPEC.md`; read it before adding features. Briefs for in-flight feature work live in `docs/tasks/`.
 
 @AGENTS.md
 
@@ -12,6 +12,7 @@ Sobremesa: a mobile-first family cookbook PWA built around gatherings. Recipes, 
 - Type-check: `npx tsc --noEmit` (run `npx next typegen` first if `PageProps`/`LayoutProps` are missing)
 - Lint: `npm run lint`
 - Build: `npm run build`
+- Tests: `npm run test:rls` (RLS against the live Supabase API) and `npm run test:e2e` (browser flows; needs `npx next start -p 3001` running, or `BASE_URL=…`). Run both before merging.
 - Apply DB migrations to the linked Supabase project: `supabase db push`
 - Env: copy `.env.example` to `.env.local`. Only the Supabase URL and publishable key are needed; there is no server secret.
 

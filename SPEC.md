@@ -14,7 +14,9 @@ In:
 - Public sample cookbook (the fictional Moreno family), read-only, shown to signed-out visitors. Signed-in users can copy it into their own cookbook.
 - Installable PWA (manifest, icons, standalone, safe areas).
 
-Out (deferred): family invitations/shared membership, photos, recipe scaling, print/PDF, AI menu planner, notifications, offline.
+Next (briefs in `docs/tasks/`): family invitations with shared cookbooks; recipe import from a photo, PDF, link or text.
+
+Out (deferred): photos, recipe scaling, print/PDF, AI menu planner, notifications, offline.
 
 ## Data
 
