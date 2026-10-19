@@ -29,10 +29,17 @@ Built per `docs/tasks/recipe-import.md` phase 1, but **with no paid API** (Anya'
 - Paste text: `src/lib/import/text.ts` splits by English/Spanish headings ("Ingredients", "Preparación"…), or guesses from quantities; rejoins wrapped lines into steps; drops printed-PDF headers (URLs, dates, page numbers).
 
 Verified (production build, port 3001):
-- `npm run test:import`: 9/9 offline (3 saved JSON-LD pages + a no-recipe page, 4 text cases, address guard).
+- `npm run test:import`: 9/9 offline (13/13 after the PDF work) (3 saved JSON-LD pages + a no-recipe page, 4 text cases, address guard).
 - Live fetch with the real fetcher: simplyrecipes, allrecipes, bbcgoodfood, seriouseats, budgetbytes (with a redirect) all parsed, ~0.3 s each.
 - `npm run test:e2e`: 24/24, no console errors. New: paste → save; text PDF → draft; photo of a printed card → OCR draft (one slip: "1large onion"); localhost link refused.
 - `npm run test:rls` 22/22, lint, tsc, build pass.
+
+PDF intelligence (after Anya's Smitten Kitchen "twisty cinnamon buns" PDF came out badly: notes as ingredients, columns merged, footer junk as steps):
+- `src/lib/import/pdf-layout.ts` (built by a subagent) reads PDFs by position and font, not draw order: ALL-CAPS group headings become "Dough:"/"Filling:" lines, bold labels ("Make dough:") start steps, notes/"Do ahead" go to the story, browser header/footer and site boilerplate are dropped, ingredient lists that spill onto the next page are kept. Falls back to the text splitter when layout signals are weak.
+- A PDF saved from a website records its URL; import first tries that page's JSON-LD (exact), then the layout read. Smitten Kitchen has no JSON-LD, so that recipe uses the layout path. The source URL is added to the story.
+- Verified: `test:import` 13/13 (synthetic "Save as PDF" fixture with groups, page spill, bold labels, boilerplate); Anya's real PDF in the browser → 18 ingredients in 3 groups, 9 labelled steps, servings 12, in 0.8 s; `test:e2e` passes. Her PDF is not committed (copyrighted).
+- Not handled yet: side-by-side ingredient columns, and servings only mentioned mid-sentence ("Makes 10 slices.").
+- The recipe she already saved under "Anya" was made with the old parser; re-import it or fix it by hand.
 
 Found and fixed: a file chosen before hydration was silently dropped (picker now disabled until hydrated); pdf.js 6's modern build calls `Math.sumPrecise` (missing in older Safari) → legacy build.
 

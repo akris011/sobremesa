@@ -1,48 +1,49 @@
 // Browser-only: reads a photo or PDF on the phone, so the file never has to be
-// uploaded. PDFs with real text use that text; photos and scanned PDFs go
-// through Tesseract OCR (free, runs in a web worker). Both libraries load only
-// when someone imports a file.
+// uploaded. PDFs with real text are read by layout (pdf-layout.ts); photos and
+// scanned PDFs go through Tesseract OCR (free, runs in a web worker). Both
+// libraries load only when someone imports a file.
+
+import type { RecipeDraft } from "./draft";
+import { extractPdfItems, recipeFromPdfItems } from "./pdf-layout";
+import { parseRecipeText } from "./text";
 
 export type Progress = (message: string) => void;
-export type FileText = { text: string; unread: string[] };
+/** `sourceUrl`: the web page a PDF was saved from, when the PDF records it. */
+export type FileDraft = { draft: RecipeDraft; sourceUrl: string | null };
+type FileText = { text: string; unread: string[] };
 
 const OCR_LONG_EDGE = 2000; // px; enough for cookbook type, small enough for a phone
-const MAX_PDF_PAGES = 8;
 const MAX_SCANNED_PAGES = 4;
 const LOW_CONFIDENCE = 55;
 
-export async function readRecipeFile(file: File, progress: Progress): Promise<FileText> {
+const fromOcr = ({ text, unread }: FileText): FileDraft => ({ draft: { ...parseRecipeText(text), unread }, sourceUrl: null });
+
+export async function readRecipeFile(file: File, progress: Progress): Promise<FileDraft> {
   if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) return readPdf(file, progress);
   if (file.type.startsWith("image/") || /\.(jpe?g|png|heic|heif|webp)$/i.test(file.name)) {
     progress("Opening the photo…");
     const canvas = await imageToCanvas(file);
-    return ocr([canvas], progress);
+    return fromOcr(await ocr([canvas], progress));
   }
   throw new Error("Choose a photo or a PDF.");
 }
 
-async function readPdf(file: File, progress: Progress): Promise<FileText> {
+async function readPdf(file: File, progress: Progress): Promise<FileDraft> {
   progress("Opening the PDF…");
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   // The legacy build supports older iOS Safari. Its worker comes from the same
   // pinned version on the CDN that serves Tesseract's files.
   pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
-  const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
+  const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), fontExtraProperties: true }); // font names → bold step labels
   try {
     const doc = await task.promise.catch(() => {
       throw new Error("That PDF wouldn't open. If it has a password, remove it first.");
     });
-    const pages = Math.min(doc.numPages, MAX_PDF_PAGES);
-    let text = "";
-    for (let n = 1; n <= pages; n++) {
-      const content = await (await doc.getPage(n)).getTextContent();
-      for (const item of content.items) {
-        if (!("str" in item)) continue;
-        text += item.str + (item.hasEOL ? "\n" : "");
-      }
-      text += "\n\n";
-    }
-    if (text.replace(/\s/g, "").length > 40) return { text, unread: [] };
+    progress("Reading the PDF…");
+    const { items, links } = await extractPdfItems(doc);
+    const draft = recipeFromPdfItems(items);
+    const sourceUrl = links.find((l) => /^https:\/\//i.test(l)) ?? null;
+    if (draft) return { draft, sourceUrl };
 
     // No text layer: a scan or a photo saved as PDF. Render the pages and read them.
     const canvases: HTMLCanvasElement[] = [];
@@ -57,7 +58,7 @@ async function readPdf(file: File, progress: Progress): Promise<FileText> {
       await page.render({ canvas, viewport }).promise;
       canvases.push(canvas);
     }
-    return ocr(canvases, progress);
+    return fromOcr(await ocr(canvases, progress));
   } finally {
     void task.destroy();
   }

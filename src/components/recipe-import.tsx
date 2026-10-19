@@ -102,8 +102,18 @@ function FileImport({ onDraft, ready }: { onDraft: (d: RecipeDraft) => void; rea
     setError(null);
     setStatus("Opening…");
     try {
-      const { text, unread } = await readRecipeFile(file, setStatus);
-      onDraft({ ...parseRecipeText(text), unread });
+      const { draft, sourceUrl } = await readRecipeFile(file, setStatus);
+      // A web page saved as PDF records its address. If that page publishes its
+      // recipe as structured data, that beats anything read off the printout.
+      if (sourceUrl) {
+        setStatus("Checking the original page…");
+        const fd = new FormData();
+        fd.set("url", sourceUrl);
+        const fromSite = await importFromLink(undefined, fd).catch(() => undefined);
+        if (fromSite?.draft) return onDraft(fromSite.draft);
+      }
+      const from = sourceUrl ? `From ${new URL(sourceUrl).hostname.replace(/^www\./, "")}: ${sourceUrl}` : "";
+      onDraft({ ...draft, story: [draft.story, from].filter(Boolean).join("\n\n") });
     } catch (e) {
       setError(e instanceof Error && e.message ? e.message : "We couldn't read that file.");
     } finally {
