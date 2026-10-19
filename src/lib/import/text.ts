@@ -14,10 +14,12 @@ const STEP_START = /^\s*(?:\d+[.)]\s+|step\s+\d+[:.]?\s*|paso\s+\d+[:.]?\s*)/i;
 const BULLET = /^\s*[-•*·]\s*/;
 const ENDS_SENTENCE = /[.!?:)]$/;
 // Headers and footers that browsers print on "Save as PDF" pages: URLs, dates, page numbers.
-const PAGE_FURNITURE = /https?:\/\/|\bwww\.|^\d{1,2}\/\d{1,2}\/\d{2,4}\b|\bpage \d+ of \d+\b|^\d+\s*\/\s*\d+$/i;
+export const PAGE_FURNITURE = /https?:\/\/|\bwww\.|^\d{1,2}\/\d{1,2}\/\d{2,4}\b|\bpage \d+ of \d+\b|^\d+\s*\/\s*\d+$/i;
 
 const isHeading = (l: string) => INGREDIENTS.test(l) || METHOD.test(l) || NOTES.test(l);
-const looksLikeIngredient = (l: string) =>
+/** Which recipe section a heading line names, if any. */
+export const sectionOf = (l: string) => (INGREDIENTS.test(l) ? "ingredients" : METHOD.test(l) ? "method" : NOTES.test(l) ? "notes" : null);
+export const looksLikeIngredient = (l: string) =>
   BULLET.test(l) || QUANTITY.test(l) || /\bto taste\b|\bal gusto\b/i.test(l) || (l.split(/\s+/).length <= 5 && !ENDS_SENTENCE.test(l));
 
 /**
@@ -83,7 +85,7 @@ export function parseRecipeText(input: string): RecipeDraft {
   return draft;
 }
 
-const clean = (l: string) => l.replace(BULLET, "").replace(STEP_START, "").trim();
+export const clean = (l: string) => l.replace(BULLET, "").replace(STEP_START, "").trim();
 
 /**
  * Turn method lines into steps. Numbered or bulleted lines start a step, as do

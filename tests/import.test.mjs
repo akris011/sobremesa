@@ -6,8 +6,12 @@ import { test } from "node:test";
 import { recipeFromHtml } from "../src/lib/import/jsonld.ts";
 import { parseRecipeText } from "../src/lib/import/text.ts";
 import { fetchPage, isPublicAddress } from "../src/lib/import/fetch-page.ts";
+import { extractPdfItems, recipeFromPdfItems } from "../src/lib/import/pdf-layout.ts";
+import * as pdfjs from "../node_modules/pdfjs-dist/legacy/build/pdf.mjs";
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/import/${name}`, import.meta.url), "utf8");
+const openPdf = (name, fontExtraProperties = true) =>
+  pdfjs.getDocument({ data: new Uint8Array(readFileSync(new URL(`./fixtures/import/${name}`, import.meta.url))), fontExtraProperties, verbosity: 0 }).promise;
 
 test("JSON-LD: WordPress @graph with HowToSections and entities", () => {
   const d = recipeFromHtml(fixture("wordpress-graph.html"));
@@ -91,4 +95,60 @@ test("link fetcher: only public https addresses", async () => {
 
   for (const url of ["http://example.com/", "https://127.0.0.1/", "https://[::1]/", "https://localhost/", "https://example.com:8443/", "https://user:pw@example.com/", "file:///etc/passwd"])
     await assert.rejects(fetchPage(url), url);
+});
+
+// recipe-card-print.pdf comes from fixtures/import/make-recipe-card-pdf.mjs: a recipe page saved
+// with "Save as PDF", with notes, a metadata line, capitalized ingredient groups that run onto
+// page 2, bold-labelled steps that wrap, site boilerplate and the browser's header and footer.
+for (const fontExtraProperties of [true, false]) {
+  test(`PDF layout: saved recipe page, ${fontExtraProperties ? "bold from font names" : "no font names"}`, async () => {
+    const { items, links } = await extractPdfItems(await openPdf("recipe-card-print.pdf", fontExtraProperties));
+    assert.equal(links[0], "https://akitchenblog.example/2024/05/pan-dulce-conchas/");
+    assert.equal(items.some((it) => it.bold), fontExtraProperties);
+    const d = recipeFromPdfItems(items);
+    assert.equal(d.title, "pan dulce conchas");
+    assert.equal(d.servings, 12);
+    assert.deepEqual(d.ingredients, [
+      "Dough:",
+      "3 1/2 cups (455 grams) bread flour",
+      "1/2 cup (100 grams) sugar",
+      "2 1/4 teaspoons instant yeast",
+      "1 teaspoon fine salt",
+      "3/4 cup (180 ml) warm milk",
+      "2 large eggs",
+      "6 tablespoons butter, softened",
+      "Topping:",
+      "1/2 cup (65 grams) all-purpose flour",
+      "1/2 cup (60 grams) powdered sugar",
+      "4 tablespoons butter, softened", // on page 2
+      "1 tablespoon cocoa powder",
+    ]);
+    assert.deepEqual(
+      d.instructions.map((s) => s.slice(0, 24)),
+      ["Make the dough: Whisk th", "First rise: Cover and le", "Divide the dough into 12", "Topping: Rub the flour, ", "Bake: At 350 degrees F f"],
+    );
+    assert.ok(d.instructions[0].endsWith("pulls away from the bowl."), "wrapped lines joined into one step");
+    assert.match(d.story, /^A few notes: The dough is soft/);
+    assert.match(d.story, /\n\nDo ahead: The shaped buns keep/);
+    const all = JSON.stringify(d);
+    for (const junk of ["Print Recipe", "Pinterest", "Amazon", "©", "9:15 AM", "akitchenblog.example/", "1/2\"", "Time:"])
+      assert.ok(!all.toLowerCase().includes(junk.toLowerCase()), `kept ${junk}`);
+  });
+}
+
+test("PDF layout: simple printed page still reads (e2e fixture)", async () => {
+  const { items } = await extractPdfItems(await openPdf("website-print.pdf"));
+  const d = recipeFromPdfItems(items);
+  assert.equal(d.title, "Lemon Olive Oil Cake");
+  assert.equal(d.description, "A loose, tender cake that keeps for days. Makes 10 slices.");
+  assert.deepEqual(d.ingredients, ["1 1/2 cups flour", "3/4 cup sugar", "3 eggs", "2/3 cup olive oil", "Zest and juice of 2 lemons"]);
+  assert.deepEqual(d.instructions, [
+    "Heat the oven to 350°F and line a 9-inch pan with parchment paper so the cake releases cleanly when it is done.",
+    "Whisk everything together and bake for 40 minutes.",
+  ]);
+});
+
+test("PDF layout: no text layer returns null so the caller can OCR", () => {
+  assert.equal(recipeFromPdfItems([]), null);
+  assert.equal(recipeFromPdfItems([{ page: 1, str: "  ", x: 0, y: 0, width: 1, height: 10, bold: false }]), null);
 });
