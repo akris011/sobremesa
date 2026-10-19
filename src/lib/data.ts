@@ -102,7 +102,12 @@ export async function listFamily(): Promise<FamilyMember[]> {
   ) as FamilyMember[];
 }
 
-/** Today's date in the format Postgres `date` columns use, for upcoming/past splits. */
+// The server runs in UTC, which is already "tomorrow" on US evenings. Gatherings
+// are calendar days in the family's time zone; one fixed zone is an MVP shortcut
+// until accounts store their own.
+const FAMILY_TIME_ZONE = "America/New_York";
+
+/** Today's date (YYYY-MM-DD) in the family's time zone, for upcoming/past splits. */
 export function today() {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: FAMILY_TIME_ZONE }).format(new Date());
 }
