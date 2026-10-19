@@ -78,6 +78,12 @@ test("text: no headings, ingredients guessed from quantities", () => {
   assert.deepEqual(d.instructions, ["Brown the beef with the onion.", "Add the raisins and simmer 20 minutes."]);
 });
 
+test("text: skips the URL and date a browser prints on a saved PDF", () => {
+  const d = parseRecipeText("www.example-recipes.com · Printed 10/19/2026\nLemon Olive Oil Cake\nIngredients\n3 eggs\nInstructions\nBake it.\n1/2");
+  assert.equal(d.title, "Lemon Olive Oil Cake");
+  assert.deepEqual(d.instructions, ["Bake it."]);
+});
+
 test("link fetcher: only public https addresses", async () => {
   for (const ip of ["127.0.0.1", "10.1.2.3", "172.16.0.1", "192.168.1.1", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:127.0.0.1"])
     assert.equal(isPublicAddress(ip), false, ip);

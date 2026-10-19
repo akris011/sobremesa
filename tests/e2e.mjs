@@ -184,6 +184,53 @@ try {
   if (await page.getByText(throwaway).count()) throw new Error("gathering not deleted");
   step("gathering delete works");
 
+  // Import: every source ends on the normal form, prefilled, and nothing saves until "Add".
+  const fixture = (name) => new URL(`./fixtures/import/${name}`, import.meta.url).pathname;
+  const draftTitle = () => page.locator('input[name="title"]').inputValue();
+  await page.goto(base + "/recipes/new");
+  await page.click('a:has-text("Bring it in")');
+  await page.waitForURL(base + "/recipes/import");
+  await noOverflow("import page");
+
+  await page.click('[role="tab"]:has-text("Paste text")');
+  await page.fill('textarea[name="text"]', "Abuela's Arroz con Leche\nServes 6\n\nIngredientes\n1 taza de arroz\n4 tazas de leche\n\nPreparación\nCocina el arroz en la leche\na fuego lento.\nSirve frío.");
+  await page.click('button:has-text("Sort it into the form")');
+  await page.locator('input[name="title"]').waitFor();
+  if ((await draftTitle()) !== "Abuela's Arroz con Leche") throw new Error(`pasted title: ${await draftTitle()}`);
+  if ((await page.locator('textarea[name="instructions"]').inputValue()) !== "Cocina el arroz en la leche a fuego lento.\nSirve frío.")
+    throw new Error("pasted steps not joined");
+  await page.click('button:has-text("Add to the cookbook")');
+  await page.waitForURL(/\/recipes\/[0-9a-f-]+\?saved=1/);
+  await page.getByText("4 tazas de leche").waitFor();
+  step("pasted text sorted into the form and saved after review");
+
+  await page.goto(base + "/recipes/import");
+  await page.locator('input[name="file"]:not([disabled])').waitFor({ state: "attached" }); // hydrated
+  await page.setInputFiles('input[name="file"]', fixture("website-print.pdf"));
+  await page.locator('input[name="title"]').waitFor({ timeout: 30_000 });
+  if ((await draftTitle()) !== "Lemon Olive Oil Cake") throw new Error(`pdf title: ${await draftTitle()}`);
+  if (!(await page.locator('textarea[name="ingredients"]').inputValue()).includes("2/3 cup olive oil")) throw new Error("pdf ingredients missing");
+  step("text PDF read in the browser into a draft");
+  await shot("04_import_pdf");
+
+  await page.click('button:has-text("Try another way")');
+  await page.locator('input[name="file"]:not([disabled])').waitFor({ state: "attached" });
+  await page.setInputFiles('input[name="file"]', fixture("printed-card.jpg"));
+  // First OCR run downloads Tesseract and the English + Spanish data from the CDN.
+  await page.locator('input[name="title"]').waitFor({ timeout: 120_000 });
+  if (!/Black Bean Soup/i.test(await draftTitle())) throw new Error(`ocr title: ${await draftTitle()}`);
+  if ((await page.locator('input[name="servings"]').inputValue()) !== "6") throw new Error("ocr servings");
+  if (!(await page.locator('textarea[name="ingredients"]').inputValue()).includes("ground cumin")) throw new Error("ocr ingredients");
+  step("photo of a printed card read with OCR into a draft");
+  await shot("05_import_photo");
+
+  await page.click('button:has-text("Try another way")');
+  await page.click('[role="tab"]:has-text("Link")');
+  await page.fill('input[name="url"]', "https://localhost/recipe");
+  await page.click('button:has-text("Read the recipe")');
+  await page.getByText("That address isn't a public website.").waitFor();
+  step("link import refuses private addresses");
+
   for (const p of ["/", "/gatherings", "/account", "/gatherings/new"]) {
     await page.goto(base + p);
     await noOverflow(p);

@@ -13,6 +13,8 @@ const QUANTITY = /^(?:[\d½⅓⅔¼¾⅛⅜⅝⅞]|a\s+(?:pinch|dash|handful|few
 const STEP_START = /^\s*(?:\d+[.)]\s+|step\s+\d+[:.]?\s*|paso\s+\d+[:.]?\s*)/i;
 const BULLET = /^\s*[-•*·]\s*/;
 const ENDS_SENTENCE = /[.!?:)]$/;
+// Headers and footers that browsers print on "Save as PDF" pages: URLs, dates, page numbers.
+const PAGE_FURNITURE = /https?:\/\/|\bwww\.|^\d{1,2}\/\d{1,2}\/\d{2,4}\b|\bpage \d+ of \d+\b|^\d+\s*\/\s*\d+$/i;
 
 const isHeading = (l: string) => INGREDIENTS.test(l) || METHOD.test(l) || NOTES.test(l);
 const looksLikeIngredient = (l: string) =>
@@ -37,6 +39,7 @@ export function parseRecipeText(input: string): RecipeDraft {
   let sawHeading = false;
 
   for (const line of raw) {
+    if (line && PAGE_FURNITURE.test(line) && line.split(" ").length <= 12) continue;
     if (!line) {
       sections[current].push(null); // keep paragraph breaks for joining wrapped steps
       continue;
