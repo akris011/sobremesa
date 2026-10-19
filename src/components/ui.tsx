@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BackIcon, ChevronIcon, Sprig } from "@/components/icons";
+import { Snapshot } from "@/components/snapshot";
 import type { FamilyMember, Gathering, Recipe } from "@/lib/types";
 
 export function formatDate(iso: string, opts: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", year: "numeric" }) {
@@ -72,24 +73,82 @@ export function Byline({ member, prefix = "From" }: { member: FamilyMember | nul
   );
 }
 
-export function RecipeCard({ recipe, index }: { recipe: Recipe; index?: number }) {
+// A few fixed tilts so the deck looks hand-stacked but renders the same every time.
+const TILTS = ["-1.1deg", "0.7deg", "-0.4deg", "1deg", "-0.8deg"];
+const DECK_INGREDIENTS = 5;
+
+/**
+ * One recipe as a lined index card in the deck. The ingredients are written
+ * in the contributor's hand and ink, the way they'd have copied it out; the
+ * recipe page keeps everything typeset for reading while cooking.
+ * Every row is 1.75rem tall so text sits on the printed lines.
+ */
+export function DeckCard({ recipe, index }: { recipe: Recipe; index: number }) {
+  const ink = recipe.contributor?.ink ?? "sepia";
+  const shown = recipe.ingredients.slice(0, DECK_INGREDIENTS);
+  const more = recipe.ingredients.length - shown.length;
+  const clearPhoto = recipe.contributor ? "pr-16" : "";
   return (
     <Link
       href={`/recipes/${recipe.id}`}
-      className="index-card index-card-lined group block px-5 pt-2.5 pb-5 transition-transform active:scale-[0.99]"
+      style={{ rotate: TILTS[index % TILTS.length] }}
+      className="index-card index-card-lined group relative block h-[23.5rem] overflow-hidden px-5 transition-transform active:scale-[0.99]"
     >
-      <div className="flex h-8 items-center justify-between">
-        <span className="eyebrow">{index !== undefined ? `No. ${String(index + 1).padStart(2, "0")}` : "Recipe"}</span>
-        {recipe.servings && <span className="eyebrow">Serves {recipe.servings}</span>}
+      <div className="flex h-[2.6rem] items-center">
+        {recipe.servings && <span className="text-[0.85rem] text-ink-faint italic">Serves {recipe.servings}</span>}
       </div>
-      <h3 className="mt-3 font-display text-[1.65rem] leading-tight font-semibold text-ink group-hover:text-burgundy">
+      {recipe.contributor && <Snapshot member={recipe.contributor} className="absolute top-3 right-4 h-[4.4rem] w-[3.8rem] rotate-3" />}
+      <h3 className={`font-display text-[1.6rem] leading-7 font-semibold text-ink group-hover:text-burgundy ${clearPhoto}`}>
         {recipe.title}
       </h3>
-      {recipe.description && <p className="mt-1 line-clamp-2 text-[0.95rem] leading-7 text-ink-soft">{recipe.description}</p>}
-      <p className="mt-2 text-[0.9rem]">
+      <p className={`text-[0.92rem] leading-7 ${clearPhoto}`}>
         <Byline member={recipe.contributor} />
       </p>
+      {recipe.description && <p className="line-clamp-2 text-[0.92rem] leading-7 text-ink-soft">{recipe.description}</p>}
+      <ul className={`hand mt-7 text-[1.3rem] leading-7 ink-${ink}`}>
+        {shown.map((item, i) => (
+          <li key={i} className="truncate">
+            {item}
+          </li>
+        ))}
+        {more > 0 && <li className="opacity-75">…and {more} more</li>}
+      </ul>
     </Link>
+  );
+}
+
+/** The whole box: every recipe by title, behind A–Z divider tabs. */
+export function RecipeIndex({ recipes }: { recipes: Recipe[] }) {
+  const groups = new Map<string, Recipe[]>();
+  for (const r of [...recipes].sort((a, b) => a.title.localeCompare(b.title))) {
+    const letter = /[a-z]/i.test(r.title.charAt(0)) ? r.title.charAt(0).toUpperCase() : "#";
+    groups.set(letter, [...(groups.get(letter) ?? []), r]);
+  }
+  return (
+    <div className="space-y-5">
+      {[...groups].map(([letter, list]) => (
+        <section key={letter}>
+          <span className="divider-tab">{letter}</span>
+          <ul className="index-card px-4">
+            {list.map((r) => (
+              <li key={r.id} className="border-b border-dotted border-rule last:border-0">
+                <Link href={`/recipes/${r.id}`} className="group flex items-center gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-[1.3rem] leading-tight font-semibold group-hover:text-burgundy">{r.title}</p>
+                    {r.contributor && (
+                      <p className="text-[0.88rem]">
+                        <Byline member={r.contributor} />
+                      </p>
+                    )}
+                  </div>
+                  <ChevronIcon className="h-5 w-5 shrink-0 text-ink-faint" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
   );
 }
 
