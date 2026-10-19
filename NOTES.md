@@ -1,7 +1,7 @@
 # NOTES
 
 Session handoff. Read this first; update it before ending a session.
-Last updated: 2026-10-19, end of session 2. Deadline: Mon 2026-10-19, 11:59 pm (submission form in `technify-training-swe.pdf` §10.4).
+Last updated: 2026-10-19, session 3 (recipe import). Deadline: Mon 2026-10-19, 11:59 pm (submission form in `technify-training-swe.pdf` §10.4).
 
 ## Where things stand
 
@@ -20,6 +20,27 @@ Session 2, against a production build (`npm run build && npx next start -p 3001`
 - `BASE_URL=https://sobremesa-taupe.vercel.app npm run test:e2e`: 20/20 pass on the live site, no console errors. Live pages, manifest and icons return 200.
 
 Each test run creates new Supabase accounts. Set `TEST_EMAIL="you+{tag}@gmail.com"` to make them yours and easy to delete.
+
+## Session 3: recipe import (branch `feature/recipe-import`, not merged)
+
+Built per `docs/tasks/recipe-import.md` phase 1, but **with no paid API** (Anya's call). /recipes/import ("Bring in a recipe", linked from /recipes/new) has three tabs; each lands on the normal form as a draft, saved only on "Add to the cookbook".
+- Link: server fetch (`src/lib/import/fetch-page.ts`) reading schema.org JSON-LD. https only, port 443, no credentials in the URL; private/loopback/link-local ranges are rejected inside the request's own DNS lookup (no rebinding gap); 8 s, 2 MB, every redirect rechecked. Signed-in only. No JSON-LD → message suggesting Save as PDF or paste.
+- Photo or PDF: read on the phone, not uploaded. pdf.js (legacy build, for older iOS Safari) uses the text layer; scans and photos go through Tesseract.js (eng + spa), downscaled to 2000 px. Low-confidence words are listed ("We couldn't read these words clearly: …"). Tesseract's core and language data (several MB, cached by the browser after the first run) and the pdf.js worker come from jsDelivr at pinned versions, so import needs a connection.
+- Paste text: `src/lib/import/text.ts` splits by English/Spanish headings ("Ingredients", "Preparación"…), or guesses from quantities; rejoins wrapped lines into steps; drops printed-PDF headers (URLs, dates, page numbers).
+
+Verified (production build, port 3001):
+- `npm run test:import`: 9/9 offline (3 saved JSON-LD pages + a no-recipe page, 4 text cases, address guard).
+- Live fetch with the real fetcher: simplyrecipes, allrecipes, bbcgoodfood, seriouseats, budgetbytes (with a redirect) all parsed, ~0.3 s each.
+- `npm run test:e2e`: 24/24, no console errors. New: paste → save; text PDF → draft; photo of a printed card → OCR draft (one slip: "1large onion"); localhost link refused.
+- `npm run test:rls` 22/22, lint, tsc, build pass.
+
+Found and fixed: a file chosen before hydration was silently dropped (picker now disabled until hydrated); pdf.js 6's modern build calls `Math.sumPrecise` (missing in older Safari) → legacy build.
+
+Not done / open:
+- **On-device check (Anya):** a real handwritten card and a cookbook page photographed on an iPhone. Needs a deploy of this branch (preview or prod; the agent doesn't deploy to prod). Check: camera opens from the picker, HEIC photos decode (iOS normally hands over JPEG), how long the first OCR takes on cellular, and how readable handwriting comes out. Note the result here.
+- Handwriting is expected to read poorly with Tesseract. If it's unusable, the options are a free-tier vision API (data may be used for training) or a paid one; decide with Anya.
+- No per-user rate limit on link import (no cost now; signed-in only). Add one if abuse appears.
+- Phase 2 (keep the original card image) still waits for invites.
 
 ## Fixed in session 1 (from the SPEC review)
 
@@ -46,7 +67,7 @@ Each test run creates new Supabase accounts. Set `TEST_EMAIL="you+{tag}@gmail.co
 
 Briefs live in `docs/tasks/`. Each session reads this file, then its brief.
 - `docs/tasks/family-invites.md`: shared cookbooks plus a join link. Rewrites RLS; owns all migrations while it runs.
-- `docs/tasks/recipe-import.md`: photo, PDF, link or text into a prefilled recipe draft. Phase 1 adds no migrations, so it can run in parallel.
+- `docs/tasks/recipe-import.md`: phase 1 built in session 3 (free, no API key) on `feature/recipe-import`; needs the on-device check, then a PR.
 
 Rules for running them side by side:
 - Branch both off `main`.
@@ -66,7 +87,7 @@ Rules for running them side by side:
    2. Then build invites, and re-record if it merges by Monday evening.
    3. Import is a bonus.
 2. Invites: reusable group-chat link (recommended) or single-use links? Can any member edit everything, or only the owner deletes?
-3. Import: OK to add the first server secret (`ANTHROPIC_API_KEY`) and pay per image? Tesseract (free) can't read handwriting usefully.
+3. Import: answered: no paid API. Revisit only if the on-device handwriting test is unusable.
 4. Delete the old test accounts (`sobremesa.e2e+…`, `sobremesa.rls+…`, `sobremesa.copy+…` @gmail.com) in the Supabase dashboard before recording.
 5. Fresh-session code review of the branch against SPEC.md before merging (session 1 was self-review).
 6. README: setup and architecture.
