@@ -1,16 +1,19 @@
+import { photoFor } from "@/lib/photos";
 import type { FamilyMember } from "@/lib/types";
 
 /**
- * A small photo of a family member, taped to the card. There's no photo
- * storage yet, so without `src` it shows their initial in their ink.
+ * A small photo of a family member, taped to the card. Members without a
+ * photo get their initial in their ink. Decorative: the name is always
+ * written next to it.
  */
-export function Snapshot({ member, src, className = "" }: { member: FamilyMember; src?: string; className?: string }) {
+export function Snapshot({ member, className = "" }: { member: FamilyMember; className?: string }) {
+  const src = photoFor(member);
   return (
-    <span className={`snapshot ${className}`} aria-hidden={!src}>
+    <span className={`snapshot ${className}`} aria-hidden>
       <span className="tape" />
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={member.name} className="h-full w-full object-cover" />
+        <img src={src} alt="" className="h-full w-full object-cover" />
       ) : (
         <span className={`hand flex h-full w-full items-center justify-center bg-paper-deep text-[2.1em] ink-${member.ink}`}>
           {member.name.trim().charAt(0).toUpperCase()}
