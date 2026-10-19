@@ -67,7 +67,11 @@ Goal: a homier, less generic look, merged in with the feature branches later. No
   - Each card shows the ingredients in the contributor's hand and ink, plus a taped `Snapshot` of them.
   - "The whole box" (`/?view=box`) lists every recipe A–Z behind divider tabs.
   - The recipe header has the snapshot, and its text sits on the printed lines.
-- Snapshot shows the person's initial in their ink. A real photo needs Storage, a `photo_url` column and a migration; do that after invites merges. `Snapshot` already takes `src`.
+- Photos: `photoFor(member)` in `src/lib/photos.ts` is the only place that picks a member's picture.
+  - The 5 sample Morenos have placeholder portraits from randomuser.me in `public/people/`, keyed by their fixed ids.
+  - Everyone else, including members copied from the sample (they get new ids), shows their initial in their ink.
+  - Real uploads (after invites merges): Storage bucket, policies on the cookbook (not `owner_id`, which invites replaces), then have `photoFor` return the stored URL first. Cards don't change.
+  - Before the repo goes public, decide whether the randomuser portraits can stay. Their license is informal; Unsplash or illustrations would be cleaner. There's no old-looking face, so Abuela's photo is younger than she should be.
 - Verified: tsc, lint and build pass; `test:e2e` 20/20 against a production build on port 3002; screenshots at 375px.
 - Next ideas: restyle gatherings and the margin notes to match; check the deck on a real iPhone (swipe vs. the edge-swipe-back gesture).
 - Merge risk: `ui.tsx` and `recipes/[id]/page.tsx` may conflict with recipe-import. Merge this after the feature branches and resolve the conflicts here.
