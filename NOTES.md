@@ -5,12 +5,11 @@ Last updated: 2026-10-19, end of session 2. Deadline: Mon 2026-10-19, 11:59 pm (
 
 ## Where things stand
 
-- Branch `feature/mvp`, draft PR #1 → `main`. 8 local commits not pushed yet. Repo `akris011/sobremesa` is **private** (must be public before submitting).
+- PR #1 (`feature/mvp`) merged into `main` as a merge commit (`28e5b0a`), keeping the small commits. New work branches off `main`. Repo `akris011/sobremesa` is **private** (must be public before submitting).
 - Supabase project `sobremesa`, ref `nzvpdlddjywgsbnlkfkj` (US East). Migrations applied with `supabase db push`. Email confirmation is off. Auth `site_url` is the Vercel URL; redirect URLs allow it plus localhost:3000/3001 (pushed with `supabase config push`).
 - Vercel: logged in as `akris011`. The project `sobremesa` is linked (`.vercel/`, gitignored). `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set for production and preview.
 - **Live at https://sobremesa-taupe.vercel.app** (deployed by Anya with `npx vercel deploy --prod --yes`; the agent isn't allowed to run production deploys).
 - Local secrets: `.env.local` (Supabase URL, publishable key, and a `VERCEL_OIDC_TOKEN` added by `vercel link`), `.env.supabase.local` (DB password). Both gitignored.
-- `SKILL.md` (frontend-design) is untracked in the repo root. It's Anya's file. If agents should use it, move it to `.claude/skills/frontend-design/SKILL.md`.
 
 ## Verified
 
@@ -41,7 +40,7 @@ Each test run creates new Supabase accounts. Set `TEST_EMAIL="you+{tag}@gmail.co
 
 1. ~~Deploy~~ done. ~~Supabase auth URLs~~ done.
 2. iPhone: open the URL in **Safari** (not Chrome; only Safari can add to the Home Screen on older iOS), then Share → Add to Home Screen. Check that it opens standalone with the icon and the bottom nav clears the home indicator. Tick the two open SPEC criteria.
-3. Push the 8 commits, make the repo public, merge PR #1.
+3. Make the repo public (ask first).
 
 ## Next tasks (parallel sessions)
 
@@ -50,11 +49,15 @@ Briefs live in `docs/tasks/`. Each session reads this file, then its brief.
 - `docs/tasks/recipe-import.md`: photo, PDF, link or text into a prefilled recipe draft. Phase 1 adds no migrations, so it can run in parallel.
 
 Rules for running them side by side:
-- Merge PR #1 first, and branch both off `main`.
+- Branch both off `main`.
 - One git worktree per agent.
 - Only the invites branch adds migrations.
 - Each opens its own PR.
 - Run `test:rls` and `test:e2e` before every merge.
+- Worktrees don't get gitignored files: copy `.env.local` into each one. The invites worktree also needs `supabase link --project-ref nzvpdlddjywgsbnlkfkj` and `.env.supabase.local`.
+- Each worktree runs its production server on its own port (e.g. 3001 and 3002) and sets `BASE_URL` for `test:e2e`.
+- **There is only one Supabase project, and the live app uses it.** `supabase db push` from the invites branch changes production right away, while the deployed code still expects the old schema. Either make the migration additive (add `cookbook_id` and the new tables without breaking `owner_id` queries, and drop old columns only after the new code is deployed), or create a second free Supabase project as staging first. Decide this before the first push.
+- Vercel isn't connected to the GitHub repo, so merging to `main` does **not** deploy. Connect it (Vercel dashboard → Project → Settings → Git) to get a production deploy on merge and a preview URL per PR. Previews also use the one Supabase project.
 
 ## Open questions
 
