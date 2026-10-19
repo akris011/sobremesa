@@ -43,13 +43,15 @@ RLS on every table:
 
 ## Acceptance criteria
 
-- [ ] Public URL loads on an iPhone, no horizontal scroll at 375px, bottom nav clears the home indicator.
-- [ ] Signed-out visitor can browse sample recipes, notes and gatherings.
-- [ ] Sign up and sign in work; sign out returns to the sample cookbook.
-- [ ] Created recipe persists after reload.
-- [ ] Margin note shows in the author's ink with name and date.
-- [ ] Gathering created; recipe added with a preparer; adding the same recipe again is impossible.
-- [ ] That gathering appears in the recipe's history with the preparer.
-- [ ] A second account cannot read or change the first account's rows (checked via the API, not just the UI).
-- [ ] `npm run build`, `npx tsc --noEmit`, `npm run lint` pass. No console errors on the main flows.
+Checked = verified in a browser or against the API; see NOTES.md for how.
+
+- [ ] Public URL loads on an iPhone, no horizontal scroll at 375px, bottom nav clears the home indicator. (375px verified locally; public URL and device check pending.)
+- [x] Signed-out visitor can browse sample recipes, notes and gatherings.
+- [x] Sign up and sign in work; sign out returns to the sample cookbook.
+- [x] Created recipe persists after reload.
+- [x] Margin note shows in the author's ink with name and date.
+- [x] Gathering created; recipe added with a preparer; adding the same recipe again is impossible.
+- [x] That gathering appears in the recipe's history with the preparer.
+- [x] A second account cannot read or change the first account's rows (checked via the API, not just the UI).
+- [x] `npm run build`, `npx tsc --noEmit`, `npm run lint` pass. No console errors on the main flows.
 - [ ] "Add to Home Screen" opens standalone with the Sobremesa icon.

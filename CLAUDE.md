@@ -31,4 +31,12 @@ Sobremesa: a mobile-first family cookbook PWA built around gatherings. Recipes, 
 - Design: aged paper, warm brown ink, burgundy accent. Fonts: Cormorant Garamond (display), Newsreader (body), Caveat (handwriting only). No emoji icons (inline SVGs live in `src/components/icons.tsx`), no gradients, no heavy rounded cards. Use the `.index-card`, `.field`, `.btn`, `.eyebrow`, `.hand`, `.ink-*` classes rather than one-off styles.
 - Phone first (375–430px). Inputs at 16px+ so iOS doesn't zoom. Respect safe-area insets; the bottom nav height is `--nav-h`.
 - UI copy is plain and specific ("Add to the menu", not "Submit"). No marketing tone.
-- Commit milestones only after the user confirms. Work on a feature branch.
+- Forms that call a `useActionState` action use `<ActionForm>` from `form-bits.tsx`, not `<form action>`; React's auto-reset would wipe the fields on a validation error.
+
+## Workflow
+
+- Start every session by reading `NOTES.md`. Before ending, update it: what changed, what was verified, open questions, next step.
+- One session per task. Keep state in files (`NOTES.md`, `SPEC.md`), not in the chat.
+- Work on a feature branch. Commit each verified change on its own, when it's done, with a message that says why. Ask before pushing, merging or changing repo visibility.
+- Verify flows in a browser against a production build (`npm run build && npx next start -p 3001`); the dev server has stalled requests.
+- After two failed fixes for the same problem, stop, revert, and write what you learned in `NOTES.md`.
