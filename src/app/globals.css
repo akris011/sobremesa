@@ -1,0 +1,175 @@
+@import "tailwindcss";
+
+/* Sobremesa design tokens. One deliberate look: aged paper, brown ink, a few
+   pen colors. Not themed for dark mode; a cookbook page is light. */
+@theme {
+  --color-paper: #f5eedf;
+  --color-paper-deep: #ece2cd;
+  --color-card: #fbf7ee;
+  --color-rule: #dccdb2;
+  --color-rule-soft: #e9dfcb;
+  --color-ink: #2e2118;
+  --color-ink-soft: #6b5848;
+  --color-ink-faint: #8f7c69;
+
+  --color-burgundy: #7a2431;
+  --color-burgundy-deep: #5e1a25;
+  --color-olive: #56622f;
+  --color-terracotta: #a24f2e;
+  --color-sepia: #6e4b2f;
+  --color-indigo: #2f3e64;
+  --color-plum: #5e3552;
+
+  --font-display: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  --font-serif: var(--font-newsreader), "Newsreader", Georgia, serif;
+  --font-hand: var(--font-caveat), "Caveat", "Bradley Hand", cursive;
+}
+
+:root {
+  color-scheme: light;
+  --nav-h: 4.25rem;
+}
+
+html {
+  background: var(--color-paper);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--color-paper);
+  /* Faint paper grain. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .15 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  color: var(--color-ink);
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-burgundy) 22%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-burgundy);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+@layer components {
+  /* Small caps label used for section headings and metadata. */
+  .eyebrow {
+    font-family: var(--font-serif);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+    font-weight: 500;
+  }
+
+  /* A recipe index card: cream stock, red header rule, faint blue-gray lines. */
+  .index-card {
+    position: relative;
+    background-color: var(--color-card);
+    border: 1px solid var(--color-rule);
+    border-radius: 3px;
+    box-shadow: 0 1px 0 rgba(70, 45, 20, 0.06), 0 6px 18px -12px rgba(70, 45, 20, 0.35);
+  }
+  .index-card-lined {
+    background-image:
+      linear-gradient(to bottom, transparent 2.6rem, color-mix(in srgb, var(--color-burgundy) 55%, transparent) 2.6rem, color-mix(in srgb, var(--color-burgundy) 55%, transparent) calc(2.6rem + 1px), transparent calc(2.6rem + 1px)),
+      repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.75rem - 1px), rgba(87, 108, 140, 0.16) calc(1.75rem - 1px), rgba(87, 108, 140, 0.16) 1.75rem);
+    background-position: 0 0, 0 2.6rem;
+  }
+
+  /* Ornamental divider: a rule with a small diamond. */
+  .ornament {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-rule);
+  }
+  .ornament::before,
+  .ornament::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: currentColor;
+  }
+
+  .hand {
+    font-family: var(--font-hand);
+    line-height: 1.25;
+  }
+
+  .ink-sepia { color: var(--color-sepia); }
+  .ink-burgundy { color: var(--color-burgundy); }
+  .ink-olive { color: var(--color-olive); }
+  .ink-terracotta { color: var(--color-terracotta); }
+  .ink-indigo { color: var(--color-indigo); }
+  .ink-plum { color: var(--color-plum); }
+
+  .field {
+    width: 100%;
+    background: var(--color-card);
+    border: 1px solid var(--color-rule);
+    border-radius: 3px;
+    padding: 0.7rem 0.85rem;
+    font-size: 1rem; /* 16px+ stops iOS from zooming on focus */
+    color: var(--color-ink);
+    transition: border-color 120ms ease;
+  }
+  .field::placeholder {
+    color: var(--color-ink-faint);
+    font-style: italic;
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--color-burgundy);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-burgundy) 14%, transparent);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.9rem;
+    padding: 0 1.25rem;
+    border-radius: 3px;
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background-color 120ms ease, transform 80ms ease, opacity 120ms ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.55; }
+  .btn-primary {
+    background: var(--color-burgundy);
+    color: #fbf3e6;
+  }
+  .btn-primary:hover { background: var(--color-burgundy-deep); }
+  .btn-quiet {
+    border: 1px solid var(--color-rule);
+    background: var(--color-card);
+    color: var(--color-ink);
+  }
+  .btn-quiet:hover { border-color: var(--color-ink-faint); }
+
+  .link {
+    color: var(--color-burgundy);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.rise { animation: rise 260ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise { animation: none; }
+}
