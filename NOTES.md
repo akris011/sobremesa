@@ -40,6 +40,7 @@ PDF intelligence (after Anya's Smitten Kitchen "twisty cinnamon buns" PDF came o
 - Verified: `test:import` 13/13 (synthetic "Save as PDF" fixture with groups, page spill, bold labels, boilerplate); Anya's real PDF in the browser → 18 ingredients in 3 groups, 9 labelled steps, servings 12, in 0.8 s; `test:e2e` passes. Her PDF is not committed (copyrighted).
 - Not handled yet: side-by-side ingredient columns, and servings only mentioned mid-sentence ("Makes 10 slices.").
 - The recipe she already saved under "Anya" was made with the old parser; re-import it or fix it by hand.
+- **On-device, 2026-10-19 (Anya, iPhone, preview `sobremesa-c3kvzhx78…`):** the cinnamon buns PDF imported correctly. Photo of a printed page and a handwritten card not yet tried.
 
 Found and fixed: a file chosen before hydration was silently dropped (picker now disabled until hydrated); pdf.js 6's modern build calls `Math.sumPrecise` (missing in older Safari) → legacy build.
 

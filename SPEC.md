@@ -59,4 +59,4 @@ Checked = verified in a browser or against the API; see NOTES.md for how.
 - [x] `npm run build`, `npx tsc --noEmit`, `npm run lint` pass. No console errors on the main flows.
 - [ ] "Add to Home Screen" opens standalone with the Sobremesa icon.
 - [x] Import: pasted text, a text PDF and a photo of a printed card each land on a prefilled form; the draft saves only on "Add to the cookbook". Link import reads JSON-LD and refuses non-https and private addresses. (`test:import` offline, `test:e2e` in the browser, live fetch of five recipe sites.)
-- [ ] Import: a real card photographed on an iPhone, handwritten and printed. Result noted in NOTES.md.
+- [ ] Import on an iPhone: a saved recipe PDF works (Anya, Oct 19). Still to try: a photographed printed page and a handwritten card. Results in NOTES.md.
