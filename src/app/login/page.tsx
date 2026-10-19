@@ -1,11 +1,14 @@
 import { redirect } from "next/navigation";
 import { getUserId } from "@/lib/supabase/server";
 import { AuthForm } from "@/components/auth-form";
+import { safeNextPath } from "@/lib/safe-next";
 
 export const metadata = { title: "Sign in" };
 
-export default async function LoginPage() {
-  if (await getUserId()) redirect("/");
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  const { next } = await searchParams;
+  const nextPath = safeNextPath(next);
+  if (await getUserId()) redirect(nextPath);
   return (
     <main className="rise pt-10">
       <div className="text-center">
@@ -16,7 +19,7 @@ export default async function LoginPage() {
         </p>
       </div>
       <div className="index-card mt-8 px-5 py-6">
-        <AuthForm />
+        <AuthForm next={nextPath} />
       </div>
     </main>
   );

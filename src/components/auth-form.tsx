@@ -6,7 +6,7 @@ import { signIn, signUp, type FormState } from "@/app/actions";
 import { Field, Submit } from "@/components/form-bits";
 import { ErrorNote } from "@/components/ui";
 
-export function AuthForm() {
+export function AuthForm({ next }: { next: string }) {
   const [mode, setMode] = useState<"in" | "up">("up");
   const [inState, inAction] = useActionState<FormState, FormData>(signIn, undefined);
   const [upState, upAction] = useActionState<FormState, FormData>(signUp, undefined);
@@ -31,6 +31,7 @@ export function AuthForm() {
       </div>
 
       <form key={mode} action={mode === "in" ? inAction : upAction} className="space-y-5">
+        <input type="hidden" name="next" value={next} />
         {mode === "up" && (
           <Field label="Your name" hint="As the family says it">
             <input name="name" required maxLength={60} autoComplete="given-name" placeholder="Mari" className="field" />

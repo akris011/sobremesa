@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/safe-next";
 import { INKS, type Ink } from "@/lib/types";
 
 export type FormState = { error?: string; ok?: string } | undefined;
@@ -55,7 +56,7 @@ export async function signIn(_: FormState, fd: FormData): Promise<FormState> {
   const { error } = await supabase.auth.signInWithPassword({ email: text(fd, "email"), password: String(fd.get("password") ?? "") });
   if (error) return { error: error.message === "Invalid login credentials" ? "That email and password don't match." : error.message };
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect(safeNextPath(text(fd, "next")));
 }
 
 export async function signUp(_: FormState, fd: FormData): Promise<FormState> {
@@ -69,7 +70,7 @@ export async function signUp(_: FormState, fd: FormData): Promise<FormState> {
   if (error) return { error: error.message };
   if (!data.session) return { ok: "Check your email to confirm your account, then sign in." };
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect(safeNextPath(text(fd, "next")));
 }
 
 export async function signOut() {
