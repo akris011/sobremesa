@@ -47,7 +47,7 @@ RLS on every table:
 
 Checked = verified in a browser or against the API; see NOTES.md for how.
 
-- [ ] Public URL loads on an iPhone, no horizontal scroll at 375px, bottom nav clears the home indicator. (375px verified locally; public URL and device check pending.)
+- [ ] Public URL loads on an iPhone, no horizontal scroll at 375px, bottom nav clears the home indicator. (Public URL and 375px verified with the e2e test on https://sobremesa-taupe.vercel.app; on-device iPhone check pending.)
 - [x] Signed-out visitor can browse sample recipes, notes and gatherings.
 - [x] Sign up and sign in work; sign out returns to the sample cookbook.
 - [x] Created recipe persists after reload.

@@ -1,14 +1,14 @@
 # NOTES
 
 Session handoff. Read this first; update it before ending a session.
-Last updated: 2026-10-18, end of session 2. Deadline: Mon 2026-10-19, 11:59 pm (submission form in `technify-training-swe.pdf` §10.4).
+Last updated: 2026-10-19, end of session 2. Deadline: Mon 2026-10-19, 11:59 pm (submission form in `technify-training-swe.pdf` §10.4).
 
 ## Where things stand
 
-- Branch `feature/mvp`, draft PR #1 → `main`. 7 local commits not pushed yet. Repo `akris011/sobremesa` is **private** (must be public before submitting).
-- Supabase project `sobremesa`, ref `nzvpdlddjywgsbnlkfkj` (US East). Migrations applied with `supabase db push`. Email confirmation is off. The auth `site_url` is still `http://127.0.0.1:3000`.
+- Branch `feature/mvp`, draft PR #1 → `main`. 8 local commits not pushed yet. Repo `akris011/sobremesa` is **private** (must be public before submitting).
+- Supabase project `sobremesa`, ref `nzvpdlddjywgsbnlkfkj` (US East). Migrations applied with `supabase db push`. Email confirmation is off. Auth `site_url` is the Vercel URL; redirect URLs allow it plus localhost:3000/3001 (pushed with `supabase config push`).
 - Vercel: logged in as `akris011`. The project `sobremesa` is linked (`.vercel/`, gitignored). `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set for production and preview.
-- **Not deployed yet.** The agent isn't allowed to run production deploys. Anya runs `npx vercel deploy --prod --yes`.
+- **Live at https://sobremesa-taupe.vercel.app** (deployed by Anya with `npx vercel deploy --prod --yes`; the agent isn't allowed to run production deploys).
 - Local secrets: `.env.local` (Supabase URL, publishable key, and a `VERCEL_OIDC_TOKEN` added by `vercel link`), `.env.supabase.local` (DB password). Both gitignored.
 - `SKILL.md` (frontend-design) is untracked in the repo root. It's Anya's file. If agents should use it, move it to `.claude/skills/frontend-design/SKILL.md`.
 
@@ -18,6 +18,7 @@ Session 2, against a production build (`npm run build && npx next start -p 3001`
 - `npm run test:rls`: 22/22 pass. It hits the Supabase API directly with the public key, creates its own accounts, and covers visitors, a second account, demo rows, the duplicate-dish constraint and `copy_sample_cookbook()`.
 - `npm run test:e2e`: 20/20 steps pass at 375px with no console errors. Covers signup, recipe, note, gathering, preparer, history and sign-out; then sign-in via `?next`, decimals, validation keeping the fields, edit, delete, a gathering dated today counting as upcoming, gathering delete, and no horizontal overflow.
 - Lint, `tsc` and build pass.
+- `BASE_URL=https://sobremesa-taupe.vercel.app npm run test:e2e`: 20/20 pass on the live site, no console errors. Live pages, manifest and icons return 200.
 
 Each test run creates new Supabase accounts. Set `TEST_EMAIL="you+{tag}@gmail.com"` to make them yours and easy to delete.
 
@@ -38,10 +39,9 @@ Each test run creates new Supabase accounts. Set `TEST_EMAIL="you+{tag}@gmail.co
 
 ## To get it on a phone (Anya)
 
-1. Deploy: `npx vercel deploy --prod --yes`. Note the `https://….vercel.app` URL.
-2. Supabase auth: set `site_url` and the redirect URLs to that URL. Next session can do it via `supabase/config.toml` and `supabase config push`. Sign-in works without this because email confirmation is off, but invites and any email links need it.
-3. iPhone: open the URL in **Safari** (not Chrome; only Safari can add to the Home Screen on older iOS), then Share → Add to Home Screen. Check that it opens standalone with the icon and the bottom nav clears the home indicator. Tick the two open SPEC criteria.
-4. Push the 7 commits, make the repo public, merge PR #1.
+1. ~~Deploy~~ done. ~~Supabase auth URLs~~ done.
+2. iPhone: open the URL in **Safari** (not Chrome; only Safari can add to the Home Screen on older iOS), then Share → Add to Home Screen. Check that it opens standalone with the icon and the bottom nav clears the home indicator. Tick the two open SPEC criteria.
+3. Push the 8 commits, make the repo public, merge PR #1.
 
 ## Next tasks (parallel sessions)
 
