@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { addMenuItem, setPreparer, type FormState } from "@/app/actions";
-import { Field, InkPicker, PersonPicker, Submit } from "@/components/form-bits";
+import { ActionForm, Field, InkPicker, PersonPicker, Submit } from "@/components/form-bits";
 import { ErrorNote } from "@/components/ui";
 import type { FamilyMember, Ink, MenuItem, Recipe } from "@/lib/types";
 
@@ -19,7 +19,7 @@ export function AddDishForm({
   hasAnyRecipes: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [state, action] = useActionState<FormState, FormData>(async (prev, fd) => {
+  const [state, action, pending] = useActionState<FormState, FormData>(async (prev, fd) => {
     const result = await addMenuItem(prev, fd);
     if (result?.ok) setOpen(false);
     return result;
@@ -49,7 +49,7 @@ export function AddDishForm({
   }
 
   return (
-    <form action={action} className="index-card mt-5 space-y-5 px-5 py-5">
+    <ActionForm action={action} pending={pending} className="index-card mt-5 space-y-5 px-5 py-5">
       <input type="hidden" name="gathering_id" value={gatheringId} />
       <Field label="Dish">
         <select name="recipe_id" required defaultValue="" className="field">
@@ -76,13 +76,13 @@ export function AddDishForm({
           <Submit pending="Adding…">Add to the menu</Submit>
         </div>
       </div>
-    </form>
+    </ActionForm>
   );
 }
 
 /** Inline "who's bringing it" control on each menu line. Key it by preparer id so it resets after a save. */
 export function PreparerForm({ item, family }: { item: MenuItem; family: FamilyMember[] }) {
-  const [state, action] = useActionState<FormState, FormData>(setPreparer, undefined);
+  const [state, action, pending] = useActionState<FormState, FormData>(setPreparer, undefined);
   const initial = item.preparer?.id ?? "";
   const [choice, setChoice] = useState(initial);
   const [ink, setInk] = useState<Ink>("olive");
@@ -90,7 +90,7 @@ export function PreparerForm({ item, family }: { item: MenuItem; family: FamilyM
   const dirty = choice !== initial;
 
   return (
-    <form action={action} className="mt-1">
+    <ActionForm action={action} pending={pending} className="mt-1">
       <input type="hidden" name="id" value={item.id} />
       <label className="flex items-center gap-2 text-[0.92rem] text-ink-soft">
         <span className="shrink-0">Brought by</span>
@@ -129,6 +129,6 @@ export function PreparerForm({ item, family }: { item: MenuItem; family: FamilyM
         </div>
       )}
       {state?.error && <p className="mt-1 text-[0.85rem] text-burgundy">{state.error}</p>}
-    </form>
+    </ActionForm>
   );
 }

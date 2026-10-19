@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { signIn, signUp, type FormState } from "@/app/actions";
-import { Field, Submit } from "@/components/form-bits";
+import { ActionForm, Field, Submit } from "@/components/form-bits";
 import { ErrorNote } from "@/components/ui";
 
 export function AuthForm({ next }: { next: string }) {
   const [mode, setMode] = useState<"in" | "up">("up");
-  const [inState, inAction] = useActionState<FormState, FormData>(signIn, undefined);
-  const [upState, upAction] = useActionState<FormState, FormData>(signUp, undefined);
+  const [inState, inAction, inPending] = useActionState<FormState, FormData>(signIn, undefined);
+  const [upState, upAction, upPending] = useActionState<FormState, FormData>(signUp, undefined);
   const state = mode === "in" ? inState : upState;
 
   return (
@@ -30,7 +30,7 @@ export function AuthForm({ next }: { next: string }) {
         ))}
       </div>
 
-      <form key={mode} action={mode === "in" ? inAction : upAction} className="space-y-5">
+      <ActionForm key={mode} action={mode === "in" ? inAction : upAction} pending={mode === "in" ? inPending : upPending} className="space-y-5">
         <input type="hidden" name="next" value={next} />
         {mode === "up" && (
           <Field label="Your name" hint="As the family says it">
@@ -55,7 +55,7 @@ export function AuthForm({ next }: { next: string }) {
         <Submit pending={mode === "in" ? "Signing in…" : "Opening your cookbook…"}>
           {mode === "in" ? "Sign in" : "Create my cookbook"}
         </Submit>
-      </form>
+      </ActionForm>
 
       <p className="mt-6 text-center text-[0.9rem] text-ink-soft">
         Just looking?{" "}

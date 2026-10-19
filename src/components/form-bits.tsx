@@ -1,14 +1,44 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { createContext, startTransition, useContext, useState, type ComponentProps, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { INKS, type FamilyMember, type Ink } from "@/lib/types";
 
-export function Submit({ children, pending, className = "btn btn-primary w-full" }: { children: ReactNode; pending: string; className?: string }) {
-  const status = useFormStatus();
+const PendingContext = createContext(false);
+
+/**
+ * A form for useActionState actions. React resets uncontrolled fields after
+ * every `<form action>` submit, even when the action returns an error, which
+ * would wipe a half-written recipe. Submitting via onSubmit avoids that; forms
+ * that should clear on success reset themselves.
+ */
+export function ActionForm({
+  action,
+  pending,
+  children,
+  ...props
+}: Omit<ComponentProps<"form">, "action" | "onSubmit"> & { action: (fd: FormData) => void; pending: boolean }) {
   return (
-    <button type="submit" className={className} disabled={status.pending}>
-      {status.pending ? pending : children}
+    <form
+      {...props}
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        startTransition(() => action(fd));
+      }}
+    >
+      <PendingContext value={pending}>{children}</PendingContext>
+    </form>
+  );
+}
+
+export function Submit({ children, pending, className = "btn btn-primary w-full" }: { children: ReactNode; pending: string; className?: string }) {
+  const actionPending = useContext(PendingContext);
+  const status = useFormStatus();
+  const busy = actionPending || status.pending;
+  return (
+    <button type="submit" className={className} disabled={busy}>
+      {busy ? pending : children}
     </button>
   );
 }

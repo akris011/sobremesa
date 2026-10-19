@@ -2,13 +2,13 @@
 
 import { useActionState } from "react";
 import { createGathering, type FormState } from "@/app/actions";
-import { Field, Submit } from "@/components/form-bits";
+import { ActionForm, Field, Submit } from "@/components/form-bits";
 import { ErrorNote } from "@/components/ui";
 
 export function GatheringForm() {
-  const [state, action] = useActionState<FormState, FormData>(createGathering, undefined);
+  const [state, action, pending] = useActionState<FormState, FormData>(createGathering, undefined);
   return (
-    <form action={action} className="space-y-6">
+    <ActionForm action={action} pending={pending} className="space-y-6">
       <Field label="What's the occasion?">
         <input name="name" required maxLength={120} placeholder="Nochebuena, Sunday dinner, Mami's birthday" className="field font-display text-[1.35rem] font-semibold" />
       </Field>
@@ -25,6 +25,6 @@ export function GatheringForm() {
       </Field>
       {state?.error && <ErrorNote>{state.error}</ErrorNote>}
       <Submit pending="Saving…">Save and set the menu</Submit>
-    </form>
+    </ActionForm>
   );
 }

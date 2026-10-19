@@ -2,15 +2,15 @@
 
 import { useActionState } from "react";
 import { saveRecipe, type FormState } from "@/app/actions";
-import { Field, PersonPicker, Submit } from "@/components/form-bits";
+import { ActionForm, Field, PersonPicker, Submit } from "@/components/form-bits";
 import { ErrorNote } from "@/components/ui";
 import type { FamilyMember, Recipe } from "@/lib/types";
 
 export function RecipeForm({ recipe, family }: { recipe?: Recipe; family: FamilyMember[] }) {
-  const [state, action] = useActionState<FormState, FormData>(saveRecipe, undefined);
+  const [state, action, pending] = useActionState<FormState, FormData>(saveRecipe, undefined);
 
   return (
-    <form action={action} className="space-y-6">
+    <ActionForm action={action} pending={pending} className="space-y-6">
       {recipe && <input type="hidden" name="id" value={recipe.id} />}
 
       <Field label="Recipe name">
@@ -63,6 +63,6 @@ export function RecipeForm({ recipe, family }: { recipe?: Recipe; family: Family
 
       {state?.error && <ErrorNote>{state.error}</ErrorNote>}
       <Submit pending="Saving…">{recipe ? "Save changes" : "Add to the cookbook"}</Submit>
-    </form>
+    </ActionForm>
   );
 }
