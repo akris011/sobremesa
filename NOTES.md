@@ -60,24 +60,25 @@ Anya: tapping a bottom-nav tab took a second or two to show the page. Cause: eve
 - Anya, on her phone (signed out on the preview, since sign-in doesn't carry over between domains): tapping Add recipe lit Family. The live site does the same: signed out, /recipes/new redirects to /login, and the nav lit Family for any /login. Fix: on /login the nav lights the tab named by `?next` (`useSearchParams` inside Suspense, for the prerendered 404). Verified locally; e2e, lint and tsc pass.
 - Preview: https://sobremesa-8d9vvup03-akris011s-projects.vercel.app (behind Vercel login). Anya checked it on her phone (2026-10-19): works. PR to `main` opened. Next: merge, then a production deploy when Anya asks.
 
-## Session 6: recipe photos + more sample data (branch `feature/recipe-photos`, NOT pushed anywhere)
+## Session 6: recipe photos + more sample data (branch `feature/recipe-photos`, not pushed to GitHub)
 
-Anya wants food photos, more sample recipes and a way to add a photo to a recipe. Parked until `feature/invites` merges, because invites owns the live schema.
-- `65b0f59`: stock portraits removed (Anya: "kinda creepy"). `photoFor` returns nothing, so every member shows their initial in their ink. `public/people/` deleted.
-- `b53ce39`: `public/food/` (10 Wikimedia Commons photos, 800 px, licenses in `CREDITS.md`), plus migration `20261020000000_recipe_photos.sql`:
-  - a `recipes.photo_url` column, and a public `recipe-photos` bucket where users write only under their own user-id folder;
-  - photos on the 6 sample recipes, and 4 new ones (Ropa Vieja, Yuca con Mojo, Croquetas, Pastelitos);
-  - 2 gatherings (Mari's graduation, Thanksgiving 2026), menu items and 6 notes;
-  - puts back the two sample notes someone edited by hand in the dashboard.
-- **Do not `supabase db push` this branch as is.** The live DB already has `20261019000000_libreta` and `20261019120000_shared_cookbooks`, and this branch has neither file. The push refused for that reason. Merge `main` + `feature/invites` in first.
-- After that merge:
-  1. In this migration, add `photo_url` to the shared-cookbooks version of `copy_sample_cookbook()`. Don't paste in an older version: it would undo cookbooks, hands and line notes.
-  2. Consider keying the bucket policies on the cookbook instead of the user, so family members can replace each other's photos.
-  3. Check that the sample inserts satisfy the invites checks (demo rows: `cookbook_id` null).
-- Not built yet:
-  - photo upload on the recipe form: resize in the browser (about 1600 px JPEG) before the server action, since Next's server-action body limit is 1 MB by default;
-  - showing `photo_url` on the recipe page header and the deck card, in place of the member snapshot;
-  - selecting `photo_url` in `data.ts` and adding it to the `Recipe` type.
+Built after invites merged (`main` merged in at `fdf71af`).
+- **Portraits.** Stock portraits removed (Anya: "kinda creepy"). Members show their initial in their ink.
+- **Migration `20261020000000_recipe_photos.sql`:**
+  - adds `recipes.photo_url`, checked to be `/food/<name>.jpg` or `https://`;
+  - adds a public `recipe-photos` bucket at `<cookbook_id>/<file>`. Insert, select and delete are allowed only for `is_cookbook_member`. JPEG only, 5 MB;
+  - re-creates the shared-cookbooks `copy_sample_cookbook()` with `photo_url` added;
+  - sample photos (`public/food`, Wikimedia Commons, see `CREDITS.md`), 4 more recipes, 2 gatherings, notes and 3 line notes.
+  - The "like Mamá said" note and the shortened Mari note are Libreta's line notes, not dashboard edits. They are left as they are.
+- **UI:**
+  - the dish photo is taped at the top of the recipe, and replaces the member snapshot on deck cards;
+  - the recipe form has "A photo of the dish": shrunk to a 1600 px JPEG in the browser, uploaded by `saveRecipe`, with "Take the photo off" to remove it. `serverActions.bodySizeLimit` is 5 MB.
+- **Verified:** `test:db` 104/104 offline (storage stubbed: member uploads, outsider/visitor refused, member deletes, copy keeps photos and line notes, bad `photo_url` refused). tsc and lint are clean.
+- **Not yet:**
+  - `supabase db push`: the agent's push was blocked pending Anya's OK;
+  - production build + e2e + on-device check, which need the push first;
+  - deploy.
+- **Known gap:** replacing or removing a photo leaves the old file in storage (no cleanup).
 
 ## Verified
 
