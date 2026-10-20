@@ -26,6 +26,7 @@ export function BottomNav() {
             <li key={href} className="flex flex-1">
               <Link
                 href={href}
+                prefetch
                 aria-current={active ? "page" : undefined}
                 className={`relative flex flex-1 flex-col items-center justify-center gap-1 text-[0.7rem] tracking-wide transition-colors ${
                   active ? "text-burgundy" : "text-ink-faint hover:text-ink-soft"
