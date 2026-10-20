@@ -304,7 +304,9 @@ try {
   await owner.waitForURL(/\/recipes\/[0-9a-f-]+\?saved=1/);
   const sharedRecipe = owner.url().split("?")[0];
   await owner.goto(base + "/account");
-  await owner.click('summary:has-text("Add someone to the family")');
+  // The add form starts open when you're the only one in the family.
+  const addForm = owner.locator('details:has(summary:has-text("Add someone to the family"))');
+  if ((await addForm.getAttribute("open")) === null) await addForm.locator("summary").click();
   await owner.fill('input[name="name"]', "Tía Carmen");
   await owner.click('button:has-text("Add to the family")');
   await owner.locator("li button", { hasText: "Tía Carmen" }).waitFor();
