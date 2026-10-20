@@ -1,5 +1,7 @@
 # Task: recipe import (photo, PDF, link, pasted text)
 
+> **Status (2026-10-19): Phase 1 built without a paid API, at Anya's request.** Claude vision was replaced by pdf.js text and Tesseract OCR running in the browser; there is no server secret, no upload and so no body-size or daily-limit work. Handwriting is best effort. The fake-extractor flag wasn't needed: e2e runs the real OCR on a printed fixture. See NOTES.md for what's verified and what's open.
+
 Goal: getting a recipe in should not mean retyping Abuela's card. The user photographs a handwritten card, uploads a PDF, pastes a link or pastes text, and gets the normal recipe form **prefilled as a draft** to correct and save. Nothing saves without review.
 
 Branch: `feature/recipe-import`, PR to `main`.

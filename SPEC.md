@@ -13,8 +13,9 @@ In:
 - Auth: email + password (Supabase). One cookbook per account.
 - Public sample cookbook (the fictional Moreno family), read-only, shown to signed-out visitors. Signed-in users can copy it into their own cookbook.
 - Installable PWA (manifest, icons, standalone, safe areas).
+- Recipe import ("Bring in a recipe"): a photo, PDF, link or pasted text becomes a prefilled draft of the normal recipe form. Nothing saves until the user presses "Add to the cookbook". Free: links use the page's schema.org JSON-LD; PDFs and photos are read on the phone (pdf.js, Tesseract OCR in English + Spanish). Printed recipes read well; handwriting is best effort.
 
-Next (briefs in `docs/tasks/`): family invitations with shared cookbooks; recipe import from a photo, PDF, link or text.
+Next (briefs in `docs/tasks/`): family invitations with shared cookbooks; keeping the original card image with an imported recipe.
 
 Out (deferred): photos, recipe scaling, print/PDF, AI menu planner, notifications, offline.
 
@@ -57,3 +58,5 @@ Checked = verified in a browser or against the API; see NOTES.md for how.
 - [x] A second account cannot read or change the first account's rows (checked via the API, not just the UI).
 - [x] `npm run build`, `npx tsc --noEmit`, `npm run lint` pass. No console errors on the main flows.
 - [ ] "Add to Home Screen" opens standalone with the Sobremesa icon.
+- [x] Import: pasted text, a text PDF and a photo of a printed card each land on a prefilled form; the draft saves only on "Add to the cookbook". Link import reads JSON-LD and refuses non-https and private addresses. (`test:import` offline, `test:e2e` in the browser, live fetch of five recipe sites.)
+- [ ] Import on an iPhone: a saved recipe PDF works (Anya, Oct 19). Still to try: a photographed printed page and a handwritten card. Results in NOTES.md.
