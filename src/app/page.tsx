@@ -1,24 +1,29 @@
 import Link from "next/link";
-import { listGatherings, listRecipes, today } from "@/lib/data";
+import { getCookbook, listGatherings, listRecipes, today } from "@/lib/data";
 import { getUserId } from "@/lib/supabase/server";
 import { DeckCard, EmptyState, GatheringRow, RecipeIndex, SampleBanner, SectionHeading } from "@/components/ui";
 import { RecipeDeck } from "@/components/recipe-deck";
 import { CopySampleButton } from "@/components/copy-sample-button";
 
 export default async function CookbookPage({ searchParams }: PageProps<"/">) {
-  const { view } = await searchParams;
+  const { view, joined } = await searchParams;
   const box = view === "box";
-  const [userId, recipes, gatherings] = await Promise.all([getUserId(), listRecipes(), listGatherings()]);
+  const [userId, recipes, gatherings, cookbook] = await Promise.all([getUserId(), listRecipes(), listGatherings(), getCookbook()]);
   const upcoming = gatherings.filter((g) => g.held_on >= today()).slice(0, 2);
 
   return (
     <main className="rise">
       <header className="pt-5 pb-5">
-        <p className="hand text-[1.45rem] text-sepia">{userId ? "Our family cookbook" : "The Moreno family cookbook"}</p>
+        <p className="hand text-[1.45rem] text-sepia">{userId ? (cookbook?.name ?? "Our family cookbook") : "The Moreno family cookbook"}</p>
         <h1 className="font-display text-[2.9rem] leading-none font-semibold tracking-tight text-burgundy italic">Sobremesa</h1>
       </header>
 
       {!userId && <SampleBanner />}
+      {userId && joined && (
+        <p role="status" className="mb-5 text-center text-[0.95rem] text-olive italic">
+          You&rsquo;re in. Tap any line of a recipe to write on it in your own hand.
+        </p>
+      )}
 
       <section>
         {recipes.length === 0 ? (

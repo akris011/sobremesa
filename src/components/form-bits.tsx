@@ -3,7 +3,7 @@
 import { createContext, startTransition, useContext, useState, type ComponentProps, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { freshInk, HAND_LABELS, INK_LABELS, inkColor, pen, readableInk } from "@/lib/pen";
-import { HANDS, INKS, type FamilyMember, type Hand, type Ink, type NamedInk } from "@/lib/types";
+import { canSignAs, HANDS, INKS, type FamilyMember, type Hand, type Ink, type NamedInk } from "@/lib/types";
 
 const PendingContext = createContext(false);
 
@@ -198,7 +198,15 @@ export function PenFields({
   );
 }
 
-/** Choose an existing family member or type a new one, with their ink. */
+/**
+ * People a form may name as its writer: unclaimed people and yourself (someone
+ * who has joined signs only for themselves), plus whoever is already chosen.
+ */
+export function signable(family: FamilyMember[], current?: string | null) {
+  return family.filter((m) => canSignAs(m) || m.id === current);
+}
+
+/** Choose an existing family member or type a new one, with their ink. Defaults to you. */
 export function PersonPicker({
   name,
   label,
@@ -214,8 +222,10 @@ export function PersonPicker({
   allowNone?: boolean;
   noneLabel?: string;
 }) {
-  const [choice, setChoice] = useState<string>(defaultValue ?? (allowNone ? "" : family[0]?.id ?? "__new"));
-  const chosen = family.find((m) => m.id === choice);
+  const people = signable(family, defaultValue);
+  const me = people.find((m) => m.mine);
+  const [choice, setChoice] = useState<string>(defaultValue ?? (allowNone ? "" : (me ?? people[0])?.id ?? "__new"));
+  const chosen = people.find((m) => m.id === choice);
 
   return (
     <div className="space-y-2.5">
@@ -228,7 +238,7 @@ export function PersonPicker({
           style={chosen ? { color: inkColor(chosen.ink) } : undefined}
         >
           {allowNone && <option value="">{noneLabel}</option>}
-          {family.map((m) => (
+          {people.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
               {m.relation && m.relation !== m.name ? ` (${m.relation})` : ""}

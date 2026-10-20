@@ -29,7 +29,10 @@ async function requireUser(supabase: Supabase) {
 
 function friendly(error: { message: string; code?: string }) {
   if (error.code === "23505") return "That dish is already on the menu.";
-  if (error.code === "42501") return "You can only change your own cookbook.";
+  // The database's own guards (claimed profiles, invite links) explain themselves;
+  // a bare RLS refusal doesn't.
+  if (error.code === "42501")
+    return /row-level security|permission denied/.test(error.message) ? "You can only change your own cookbook." : error.message;
   if (error.code === "23514") return "One of the fields is too long or empty.";
   return error.message;
 }
@@ -89,11 +92,11 @@ export async function signUp(_: FormState, fd: FormData): Promise<FormState> {
   redirect(safeNextPath(text(fd, "next")));
 }
 
-export async function signOut() {
+export async function signOut(fd?: FormData) {
   const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect(safeNextPath(fd ? text(fd, "next") : "/"));
 }
 
 export async function copySampleCookbook(): Promise<FormState> {
@@ -312,11 +315,73 @@ export async function updateFamilyMember(_: FormState, fd: FormData): Promise<Fo
   const { ink, hand } = penFrom(fd, "");
   if (!name) return { error: "Write their name." };
   if (!ink) return { error: "Choose an ink color." };
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("family_members")
     .update({ name, ink, hand, relation: text(fd, "relation") || null })
-    .eq("id", text(fd, "id"));
+    .eq("id", text(fd, "id"))
+    .select("id");
   if (error) return { error: friendly(error) };
+  // RLS skips (rather than refuses) a profile someone else has claimed.
+  if (!data?.length) return { error: "Only they can change their own pen, now that they've joined." };
   revalidatePath("/", "layout");
   return { ok: "Saved." };
+}
+
+// Sharing --------------------------------------------------------------------
+
+export async function renameCookbook(_: FormState, fd: FormData): Promise<FormState> {
+  const supabase = await createClient();
+  await requireUser(supabase);
+  const name = text(fd, "name");
+  if (!name) return { error: "Give the cookbook a name." };
+  if (name.length > 80) return { error: "Keep the name under 80 characters." };
+  const { data, error } = await supabase.from("cookbooks").update({ name }).eq("id", text(fd, "id")).select("id");
+  if (error) return { error: friendly(error) };
+  if (!data?.length) return { error: "Only the person who started the cookbook can rename it." };
+  revalidatePath("/", "layout");
+  return { ok: "Renamed." };
+}
+
+/** The owner makes the family's invite link (or gets the one still open). */
+export async function createInvite() {
+  const supabase = await createClient();
+  await requireUser(supabase);
+  await supabase.rpc("create_invite");
+  revalidatePath("/account");
+}
+
+/** The owner turns the link off. Whoever already joined stays. */
+export async function revokeInvite() {
+  const supabase = await createClient();
+  await requireUser(supabase);
+  await supabase.rpc("revoke_invite");
+  revalidatePath("/account");
+}
+
+/**
+ * Join through an invite link as one of the people already in the book
+ * (`member` = their id) or as someone new (`member` = "__new"), with the name,
+ * ink and hand the joiner chose.
+ */
+export async function acceptInvite(_: FormState, fd: FormData): Promise<FormState> {
+  const supabase = await createClient();
+  await requireUser(supabase);
+  const token = text(fd, "token");
+  const member = text(fd, "member");
+  const name = text(fd, "name");
+  const { ink, hand } = penFrom(fd, "");
+  if (!member) return { error: "Choose which one you are, or add yourself." };
+  if (!name) return { error: "Write your name." };
+  if (!ink) return { error: "Choose an ink color." };
+  const { error } = await supabase.rpc("accept_invite", {
+    p_token: token,
+    p_member: member === "__new" ? null : member,
+    p_name: name,
+    p_relation: text(fd, "relation"),
+    p_ink: ink,
+    p_hand: hand,
+  });
+  if (error) return { error: friendly(error) };
+  revalidatePath("/", "layout");
+  redirect("/?joined=1");
 }
