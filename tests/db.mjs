@@ -30,6 +30,14 @@ await db.exec(`
     select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   grant usage on schema auth to anon, authenticated;
   grant usage on schema public to anon, authenticated;
+  create schema storage;
+  create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+  create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
+  alter table storage.objects enable row level security;
+  create function storage.foldername(name text) returns text[] language sql immutable as $$
+    select (string_to_array(name, '/'))[1:array_length(string_to_array(name, '/'), 1) - 1] $$;
+  grant usage on schema storage to anon, authenticated;
+  grant all on storage.objects to anon, authenticated;
   alter default privileges in schema public grant all on tables to anon, authenticated;
   alter default privileges in schema public grant all on functions to anon, authenticated;
   alter default privileges in schema public grant all on sequences to anon, authenticated;
@@ -266,6 +274,35 @@ r = await as(A, `delete from family_members where id = $1 returning id`, [aAbuel
 expect("claimed profiles can't be removed", !r.error && r.rows.length === 0);
 r = await as(A, `delete from recipes where id = $1 returning id`, [eRecipe]);
 expect("any member removes a recipe", r.rows?.length === 1, r.error);
+
+// --- Later migrations (recipe photos) ------------------------------------------------
+for (const f of files.filter((f) => f > NEW)) await run(f);
+
+r = await as(null, `select count(*)::int n, count(photo_url)::int p from recipes`);
+expect("visitors see 10 sample recipes, all with photos", r.rows?.[0].n === 10 && r.rows[0].p === 10, JSON.stringify(r.rows ?? r.error));
+r = await as(null, `select count(*)::int n from annotations where line_text is not null`);
+expect("sample line notes are kept", r.rows?.[0].n >= 12, JSON.stringify(r.rows ?? r.error));
+const G = await signUp("Photos");
+r = await as(G, `select public.copy_sample_cookbook()`);
+expect("copy still works after the photos migration", !r.error, r.error);
+r = await as(G, `select count(photo_url)::int p, count(*)::int n from recipes where cookbook_id = public.my_cookbook_id()`);
+expect("copied recipes keep their photos", r.rows?.[0].n === 10 && r.rows[0].p === 10, JSON.stringify(r.rows ?? r.error));
+r = await as(G, `select count(*)::int n from annotations where cookbook_id = public.my_cookbook_id() and line_text is not null`);
+expect("copied line notes keep their line", r.rows?.[0].n >= 12, JSON.stringify(r.rows ?? r.error));
+
+const gBook = (await one(G, `select public.my_cookbook_id() id`)).id;
+r = await as(G, `insert into storage.objects (bucket_id, name) values ('recipe-photos', $1)`, [`${gBook}/a.jpg`]);
+expect("a member uploads into their cookbook's folder", r.count === 1, r.error);
+r = await as(B, `insert into storage.objects (bucket_id, name) values ('recipe-photos', $1)`, [`${gBook}/b.jpg`]);
+expect("someone else can't upload into that folder", !!r.error, r.error);
+r = await as(null, `insert into storage.objects (bucket_id, name) values ('recipe-photos', $1)`, [`${gBook}/c.jpg`]);
+expect("visitors can't upload", !!r.error, r.error);
+r = await as(B, `delete from storage.objects where name = $1 returning id`, [`${gBook}/a.jpg`]);
+expect("someone else can't delete a cookbook's photo", !r.error && r.rows.length === 0, r.error);
+r = await as(G, `delete from storage.objects where name = $1 returning id`, [`${gBook}/a.jpg`]);
+expect("a member deletes their cookbook's photo", r.rows?.length === 1, r.error);
+r = await as(G, `update recipes set photo_url = 'javascript:alert(1)' where cookbook_id = public.my_cookbook_id() returning id`);
+expect("photo_url must be a sample path or https", !!r.error, r.error);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

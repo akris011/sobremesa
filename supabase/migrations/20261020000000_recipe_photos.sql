@@ -1,32 +1,75 @@
 -- Recipe photos, and a fuller sample cookbook.
 --
 -- A recipe can have one photo. Sample photos are static files in /public/food;
--- uploaded photos live in the public "recipe-photos" bucket under the
--- uploader's user id, and only that user can write or delete them.
+-- uploaded photos live in the public "recipe-photos" bucket at
+-- <cookbook_id>/<file>, and only members of that cookbook can write there.
 
 alter table public.recipes add column photo_url text
   check (photo_url is null or photo_url ~ '^(/food/[a-z0-9-]+\.jpg|https://.+)$');
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('recipe-photos', 'recipe-photos', true, 5242880, array['image/jpeg', 'image/png', 'image/webp']);
+values ('recipe-photos', 'recipe-photos', true, 5242880, array['image/jpeg']);
 
-create policy "upload own recipe photos" on storage.objects for insert to authenticated
-  with check (bucket_id = 'recipe-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
-create policy "replace own recipe photos" on storage.objects for update to authenticated
-  using (bucket_id = 'recipe-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
-create policy "delete own recipe photos" on storage.objects for delete to authenticated
-  using (bucket_id = 'recipe-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "cookbook members add recipe photos" on storage.objects for insert to authenticated
+  with check (bucket_id = 'recipe-photos' and public.is_cookbook_member(((storage.foldername(name))[1])::uuid));
+create policy "cookbook members list recipe photos" on storage.objects for select to authenticated
+  using (bucket_id = 'recipe-photos' and public.is_cookbook_member(((storage.foldername(name))[1])::uuid));
+create policy "cookbook members remove recipe photos" on storage.objects for delete to authenticated
+  using (bucket_id = 'recipe-photos' and public.is_cookbook_member(((storage.foldername(name))[1])::uuid));
 
--- copy_sample_cookbook() must also copy photo_url. Not done here: the live DB
--- runs the shared-cookbooks version of that function (feature/invites). After
--- invites merges, add photo_url to *that* version in this file before pushing.
+-- The shared-cookbooks version of the copy, now carrying the photo.
+create or replace function public.copy_sample_cookbook() returns void
+language plpgsql security invoker set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  cb uuid := public.my_cookbook_id();
+begin
+  if uid is null or cb is null then
+    raise exception 'not signed in';
+  end if;
+  if exists (select 1 from recipes where cookbook_id = cb) then
+    raise exception 'cookbook already has recipes';
+  end if;
+
+  create temp table member_map on commit drop as
+    select id as old_id, gen_random_uuid() as new_id from family_members where is_demo;
+  create temp table recipe_map on commit drop as
+    select id as old_id, gen_random_uuid() as new_id from recipes where is_demo;
+  create temp table gathering_map on commit drop as
+    select id as old_id, gen_random_uuid() as new_id from gatherings where is_demo;
+
+  insert into family_members (id, cookbook_id, owner_id, name, relation, ink, hand)
+    select m.new_id, cb, uid, f.name, f.relation, f.ink, f.hand
+    from family_members f join member_map m on m.old_id = f.id;
+
+  insert into recipes (id, cookbook_id, owner_id, title, description, story, ingredients, instructions, servings, contributor_id, photo_url)
+    select r.new_id, cb, uid, x.title, x.description, x.story, x.ingredients, x.instructions, x.servings, m.new_id, x.photo_url
+    from recipes x join recipe_map r on r.old_id = x.id
+    left join member_map m on m.old_id = x.contributor_id;
+
+  insert into gatherings (id, cookbook_id, owner_id, name, held_on, location, description)
+    select g.new_id, cb, uid, x.name, x.held_on, x.location, x.description
+    from gatherings x join gathering_map g on g.old_id = x.id;
+
+  insert into menu_items (cookbook_id, owner_id, gathering_id, recipe_id, preparer_id, note)
+    select cb, uid, g.new_id, r.new_id, m.new_id, x.note
+    from menu_items x
+    join gathering_map g on g.old_id = x.gathering_id
+    join recipe_map r on r.old_id = x.recipe_id
+    left join member_map m on m.old_id = x.preparer_id
+    where x.is_demo;
+
+  insert into annotations (cookbook_id, owner_id, recipe_id, author_id, body, created_at,
+                           line_kind, line_text, strike_start, strike_end, replacement)
+    select cb, uid, r.new_id, m.new_id, x.body, x.created_at,
+           x.line_kind, x.line_text, x.strike_start, x.strike_end, x.replacement
+    from annotations x
+    join recipe_map r on r.old_id = x.recipe_id
+    left join member_map m on m.old_id = x.author_id
+    where x.is_demo;
+end $$;
 
 -- Sample data ----------------------------------------------------------------
-
--- Put back the sample notes that were edited by hand in the dashboard.
-delete from public.annotations where is_demo and body = 'like Mamá said';
-update public.annotations set body = 'I use half beef, half ground pork. Abuela pretends not to notice.'
-  where is_demo and body = 'Abuela pretends not to notice.';
 
 update public.recipes set photo_url = v.photo from (values
   ('d0000000-0000-4000-8000-000000000201'::uuid, '/food/picadillo.jpg'),
@@ -160,6 +203,14 @@ insert into public.annotations (is_demo, owner_id, recipe_id, author_id, body, c
   (true, null, 'd0000000-0000-4000-8000-000000000209', 'd0000000-0000-4000-8000-000000000101',
    'Too much nutmeg the first time. Better now.', '2026-04-10'),
   (true, null, 'd0000000-0000-4000-8000-000000000209', 'd0000000-0000-4000-8000-000000000103',
-   'Freeze them breaded on a tray, then bag them. Fry from frozen.', '2026-05-17'),
+   'Freeze them breaded on a tray, then bag them. Fry from frozen.', '2026-05-17');
+
+-- Notes written on a line, Libreta style.
+insert into public.annotations (is_demo, owner_id, recipe_id, author_id, body, created_at,
+                                line_kind, line_text, strike_start, strike_end, replacement) values
   (true, null, 'd0000000-0000-4000-8000-000000000210', 'd0000000-0000-4000-8000-000000000105',
-   'Double the cream cheese.', '2026-05-17');
+   'Trust me.', '2026-05-18', 'ingredient', '4 oz cream cheese', 0, 4, '8 oz'),
+  (true, null, 'd0000000-0000-4000-8000-000000000208', 'd0000000-0000-4000-8000-000000000102',
+   'Less, or nobody talks to you after.', '2025-12-27', 'ingredient', '8 cloves garlic, thinly sliced', 0, 8, '6 cloves'),
+  (true, null, 'd0000000-0000-4000-8000-000000000207', 'd0000000-0000-4000-8000-000000000101',
+   'Always with maduros. Always.', '2026-03-02', 'step', 'Taste for salt. Serve with white rice and maduros.', null, null, null);
