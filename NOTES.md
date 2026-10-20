@@ -18,7 +18,8 @@ Anya: tapping a bottom-nav tab took a second or two to show the page. Cause: eve
 - Fix: bottom-nav `<Link prefetch>` (full prefetch) + `experimental.staleTimes { dynamic: 30, static: 60 }` in `next.config.ts`. Every server action already calls `revalidatePath`, which clears the client cache.
 - Verified on a production build (port 3001): tab taps went from ~320 ms to ~20 ms with no skeleton. Freshness check (a throwaway script, not committed): a new gathering and a new recipe show up right away when you open their tab; after sign-out, the tabs show none of the account's data. `test:e2e` 24/24 with no console errors, `test:rls` 22/22, `test:import` 13/13, lint and tsc clean.
 - Trade-off: a change made on another device shows on the tabs within 60 s, not at once (iOS standalone mode has no pull-to-refresh).
-- Pushed `fix/tab-latency`; preview https://sobremesa-m0dywsqki-akris011s-projects.vercel.app (behind Vercel login, so the agent could not time it). Next: Anya to try tab taps on her phone, then PR to `main`.
+- Anya, on her phone (signed out on the preview, since sign-in doesn't carry over between domains): tapping Add recipe lit Family. The live site does the same: signed out, /recipes/new redirects to /login, and the nav lit Family for any /login. Fix: on /login the nav lights the tab named by `?next` (`useSearchParams` inside Suspense, for the prerendered 404). Verified locally; e2e, lint and tsc pass.
+- Preview: https://sobremesa-8d9vvup03-akris011s-projects.vercel.app (behind Vercel login). Next: Anya checks tab taps on her phone, signed in and signed out, then PR to `main`.
 
 ## Verified
 
