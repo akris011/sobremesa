@@ -1,7 +1,7 @@
 # NOTES
 
 Session handoff. Read this first; update it before ending a session.
-Last updated: 2026-10-19, session 3 (recipe import). Deadline: Mon 2026-10-19, 11:59 pm (submission form in `technify-training-swe.pdf` §10.4).
+Last updated: 2026-10-19, session 4 (La Libreta: line edits + pens). Deadline: Mon 2026-10-19, 11:59 pm (submission form in `technify-training-swe.pdf` §10.4).
 
 ## Where things stand
 
@@ -30,6 +30,22 @@ Session 2, against a production build (`npm run build && npx next start -p 3001`
 - `BASE_URL=https://sobremesa-taupe.vercel.app npm run test:e2e`: 20/20 pass on the live site, no console errors. Live pages, manifest and icons return 200.
 
 Each test run creates new Supabase accounts. Set `TEST_EMAIL="you+{tag}@gmail.com"` to make them yours and easy to delete.
+
+## Session 4: La Libreta (branch `feature/libreta`, worktree `../sobremesa-libreta`)
+
+From direction 02 in Anya's `sobremesa-directions.html`. Her choices: keep the serif recipe text (no typewriter), Caveat by default with a choice of hand on the profile, 12 curated inks plus "add your own color", and permission to push the migration.
+- **Migration `20261019000000_libreta.sql` is already pushed to the live Supabase project.** Additive only; production (main) keeps working. Adds `family_members.hand`, widens `ink` to 12 names or `#rrggbb`, and adds line fields to `annotations` (`line_kind`, `line_text`, `strike_start/end`, `replacement`). Sample Morenos got hands and some of their notes were moved onto lines, plus two new corrections. `copy_sample_cookbook()` copies both.
+- Tap a line → who's writing → rewrite it and/or add a note. `diffLine` crosses out whole words. The newest correction is drawn into the line; older corrections and notes go underneath. "Show it as first written" is a CSS `:has()` toggle. Notes on lines that later changed fall back to the margin with "On '…', as it read then".
+- Pens: `src/lib/pen.ts` (`pen(member)`, `inkColor`, `readableInk` darkens custom colors to 4.5:1 against the card). Six hands: Caveat, Kalam, Cedarville Cursive, Homemade Apple, Reenie Beanie, Gochi Hand, all via next/font without preload. `font-size-adjust` per hand is tuned by eye. Older Safari (<17) ignores it, so the hands will look less even there.
+- Family page: rows open into an edit form (name, relation, ink, hand); "Add someone" has a live signature preview; new people default to an unused ink. Same `PenFields` is used inline in "Someone new…" pickers.
+
+Verified (production build, port 3003): `test:import` 16/16 (3 new: diff, placement, readable ink); `test:rls` 24/24 (copy counts updated to 11 notes, plus line edits and hands survive the copy); `test:e2e` 26/26, no console errors (new: line edit + toggle, custom pale color darkened, hand changed). tsc, lint, build clean. Screenshots of the sample flan and picadillo at 390px.
+
+Open / next:
+- Not merged, not deployed. Needs a PR (ask Anya before pushing).
+- Check on an iPhone: tapping a line vs. scrolling, the native color picker, and how the hands look in iOS Safari.
+- Homemade Apple ("old-world script") is the least readable hand; drop it if notes in it are hard to read on a phone.
+- The deck cards still show the plain ingredients (no edits). Could show the newest correction there too.
 
 ## Session 3: recipe import (merged to `main` via PR #2)
 

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/safe-next";
-import { INKS, type Ink } from "@/lib/types";
+import { diffLine } from "@/lib/libreta";
+import { isHand, parseInk } from "@/lib/pen";
 
 export type FormState = { error?: string; ok?: string } | undefined;
 
@@ -34,6 +35,18 @@ function friendly(error: { message: string; code?: string }) {
 }
 
 /**
+ * A pen from a form: `<prefix>ink` is a named ink or "custom", in which case the
+ * color is `<prefix>ink_custom` (darkened if too pale to read); `<prefix>hand`
+ * is the handwriting. Missing or unknown values fall back to the defaults.
+ */
+function penFrom(fd: FormData, prefix: string) {
+  const choice = text(fd, `${prefix}ink`);
+  const ink = parseInk(choice === "custom" ? text(fd, `${prefix}ink_custom`) : choice);
+  const hand = text(fd, `${prefix}hand`);
+  return { ink, hand: isHand(hand) ? hand : "caveat" };
+}
+
+/**
  * Forms pick a family member from a list, or choose "new" and type a name.
  * Returns the member id (creating them if needed), null for "nobody", or an error.
  */
@@ -42,9 +55,12 @@ async function resolvePerson(supabase: Supabase, fd: FormData, field: string): P
   if (choice !== "__new") return { id: choice || null };
   const name = text(fd, `${field}_name`);
   if (!name) return { error: "Write the new person's name." };
-  const inkRaw = text(fd, `${field}_ink`);
-  const ink: Ink = (INKS as readonly string[]).includes(inkRaw) ? (inkRaw as Ink) : "sepia";
-  const { data, error } = await supabase.from("family_members").insert({ name, ink }).select("id").single();
+  const { ink, hand } = penFrom(fd, `${field}_`);
+  const { data, error } = await supabase
+    .from("family_members")
+    .insert({ name, ink: ink ?? "sepia", hand })
+    .select("id")
+    .single();
   if (error) return { error: friendly(error) };
   return { id: data.id };
 }
@@ -157,6 +173,49 @@ export async function addAnnotation(_: FormState, fd: FormData): Promise<FormSta
   return { ok: "Note added." };
 }
 
+/**
+ * Write on one line of a recipe: rewrite it (the changed words are crossed out
+ * and the new ones written beside them), add a note next to it, or both.
+ * The recipe itself is never changed.
+ */
+export async function addLineNote(_: FormState, fd: FormData): Promise<FormState> {
+  const supabase = await createClient();
+  await requireUser(supabase);
+  const recipeId = text(fd, "recipe_id");
+  const kind = text(fd, "line_kind");
+  const line = String(fd.get("line_text") ?? "");
+  const rewrite = text(fd, "rewrite").replace(/\s+/g, " ");
+  const body = text(fd, "body");
+  if (kind !== "ingredient" && kind !== "step") return { error: "That line isn't in the recipe." };
+
+  const { data: recipe } = await supabase.from("recipes").select("ingredients, instructions").eq("id", recipeId).maybeSingle();
+  const lines: string[] = kind === "ingredient" ? (recipe?.ingredients ?? []) : (recipe?.instructions ?? []);
+  if (!lines.includes(line)) return { error: "That line has changed since the page loaded. Reload and try again." };
+
+  const change = rewrite ? diffLine(line, rewrite) : null;
+  if (!change && !body) return { error: "Change a word, or write a note beside it." };
+  if (body.length > 600) return { error: "Keep notes under 600 characters." };
+  if (change && change.replacement.length > 300) return { error: "That's a lot to squeeze in. Put the longer part in the note." };
+
+  const person = await resolvePerson(supabase, fd, "author");
+  if ("error" in person) return person;
+  if (!person.id) return { error: "Choose who is writing this." };
+
+  const { error } = await supabase.from("annotations").insert({
+    recipe_id: recipeId,
+    author_id: person.id,
+    body,
+    line_kind: kind,
+    line_text: line,
+    strike_start: change?.start ?? null,
+    strike_end: change?.end ?? null,
+    replacement: change ? change.replacement : null,
+  });
+  if (error) return { error: friendly(error) };
+  revalidatePath(`/recipes/${recipeId}`);
+  return { ok: "Written in." };
+}
+
 export async function deleteAnnotation(fd: FormData) {
   const supabase = await createClient();
   await requireUser(supabase);
@@ -237,20 +296,27 @@ export async function addFamilyMember(_: FormState, fd: FormData): Promise<FormS
   const supabase = await createClient();
   await requireUser(supabase);
   const name = text(fd, "name");
-  const ink = text(fd, "ink");
+  const { ink, hand } = penFrom(fd, "");
   if (!name) return { error: "Write their name." };
-  if (!(INKS as readonly string[]).includes(ink)) return { error: "Choose an ink color." };
-  const { error } = await supabase.from("family_members").insert({ name, ink, relation: text(fd, "relation") || null });
+  if (!ink) return { error: "Choose an ink color." };
+  const { error } = await supabase.from("family_members").insert({ name, ink, hand, relation: text(fd, "relation") || null });
   if (error) return { error: friendly(error) };
   revalidatePath("/", "layout");
   return { ok: `${name} added.` };
 }
 
-export async function setMemberInk(fd: FormData) {
+export async function updateFamilyMember(_: FormState, fd: FormData): Promise<FormState> {
   const supabase = await createClient();
   await requireUser(supabase);
-  const ink = text(fd, "ink");
-  if (!(INKS as readonly string[]).includes(ink)) return;
-  await supabase.from("family_members").update({ ink }).eq("id", text(fd, "id"));
+  const name = text(fd, "name");
+  const { ink, hand } = penFrom(fd, "");
+  if (!name) return { error: "Write their name." };
+  if (!ink) return { error: "Choose an ink color." };
+  const { error } = await supabase
+    .from("family_members")
+    .update({ name, ink, hand, relation: text(fd, "relation") || null })
+    .eq("id", text(fd, "id"));
+  if (error) return { error: friendly(error) };
   revalidatePath("/", "layout");
+  return { ok: "Saved." };
 }

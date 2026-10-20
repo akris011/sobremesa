@@ -64,10 +64,16 @@ const c = await signUp("rls-c", "Copier");
 const copied = await c.rpc("copy_sample_cookbook");
 expect("copying the sample into an empty cookbook works", !copied.error, copied.error?.message);
 const { data: { user } } = await c.auth.getUser();
-const want = { family_members: 6, recipes: 6, gatherings: 4, menu_items: 12, annotations: 9 };
+const want = { family_members: 6, recipes: 6, gatherings: 4, menu_items: 12, annotations: 11 };
 for (const [table, n] of Object.entries(want)) {
   const { count } = await c.from(table).select("*", { count: "exact", head: true }).eq("owner_id", user.id);
   expect(`copy made ${n} ${table}`, count === n, `got ${count}`);
 }
+const { count: lineEdits } = await c
+  .from("annotations").select("*", { count: "exact", head: true })
+  .eq("owner_id", user.id).not("strike_start", "is", null);
+expect("copy keeps the crossed-out line edits", lineEdits === 5, `got ${lineEdits}`);
+const { data: hands } = await c.from("family_members").select("hand").eq("owner_id", user.id).neq("hand", "caveat");
+expect("copy keeps each member's handwriting", hands?.length === 4, `got ${hands?.length}`);
 
 done();
