@@ -11,7 +11,7 @@ async function scoped() {
   return { supabase, userId, col, val };
 }
 
-const MEMBER = "id, name, relation, ink";
+const MEMBER = "id, name, relation, ink, hand";
 const RECIPE = `id, is_demo, title, description, story, ingredients, instructions, servings,
   contributor_id, created_at, updated_at, contributor:family_members(${MEMBER})`;
 
@@ -37,7 +37,7 @@ export async function getRecipe(id: string) {
   const [annotations, served] = await Promise.all([
     supabase
       .from("annotations")
-      .select(`id, body, created_at, author:family_members(${MEMBER})`)
+      .select(`id, body, created_at, line_kind, line_text, strike_start, strike_end, replacement, author:family_members(${MEMBER})`)
       .eq("recipe_id", id)
       .order("created_at"),
     supabase

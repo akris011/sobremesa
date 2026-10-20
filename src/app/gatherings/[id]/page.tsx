@@ -7,6 +7,7 @@ import { AddDishForm, PreparerForm } from "@/components/menu-forms";
 import { ChevronIcon, CloseIcon } from "@/components/icons";
 import { deleteGathering, removeMenuItem } from "@/app/actions";
 import { ConfirmButton } from "@/components/confirm-button";
+import { pen } from "@/lib/pen";
 
 export async function generateMetadata({ params }: PageProps<"/gatherings/[id]">): Promise<Metadata> {
   const data = await getGathering((await params).id);
@@ -71,7 +72,7 @@ export default async function GatheringPage({ params }: PageProps<"/gatherings/[
                     {item.preparer ? (
                       <>
                         {isPast ? "Made by" : "Brought by"}{" "}
-                        <span className={`hand text-[1.3rem] ink-${item.preparer.ink}`}>{item.preparer.name}</span>
+                        <span {...pen(item.preparer, "text-[1.3rem]")}>{item.preparer.name}</span>
                       </>
                     ) : (
                       <span className="italic">Still needs someone</span>
