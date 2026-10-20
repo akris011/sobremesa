@@ -52,6 +52,7 @@ export type Recipe = {
   ingredients: string[];
   instructions: string[];
   servings: number | null;
+  photo_url: string | null;
   contributor_id: string | null;
   created_at: string;
   updated_at: string;

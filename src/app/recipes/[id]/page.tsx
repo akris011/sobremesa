@@ -6,7 +6,7 @@ import { Byline, formatDate, SampleBanner, SectionHeading, TopBar } from "@/comp
 import { AnnotationForm } from "@/components/annotation-form";
 import { deleteAnnotation } from "@/app/actions";
 import { CloseIcon } from "@/components/icons";
-import { Snapshot } from "@/components/snapshot";
+import { DishPhoto, Snapshot } from "@/components/snapshot";
 import { MarginNote, WrittenLine } from "@/components/libreta";
 import { LineEditor } from "@/components/line-editor";
 import { isCorrection, placeNotes } from "@/lib/libreta";
@@ -65,6 +65,9 @@ export default async function RecipePage({ params, searchParams }: PageProps<"/r
       )}
 
       <article className="libreta">
+        {recipe.photo_url && (
+          <DishPhoto src={recipe.photo_url} className="relative mx-auto mt-5 mb-2 aspect-[4/3] w-[92%] rotate-[0.8deg]" />
+        )}
         <header className="index-card index-card-lined relative mt-4 -rotate-[0.4deg] px-5 pb-6">
           <div className="flex h-[2.6rem] items-center">
             {recipe.servings && <span className="text-[0.9rem] text-ink-faint italic">Serves {recipe.servings}</span>}

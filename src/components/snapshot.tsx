@@ -7,6 +7,17 @@ import { pen } from "@/lib/pen";
  * photo get their initial in their ink. Decorative: the name is always
  * written next to it.
  */
+/** A photo of the dish, taped down like a print. Decorative: the title is right beside it. */
+export function DishPhoto({ src, className = "" }: { src: string; className?: string }) {
+  return (
+    <span className={`snapshot ${className}`} aria-hidden>
+      <span className="tape" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
+    </span>
+  );
+}
+
 export function Snapshot({ member, className = "" }: { member: FamilyMember; className?: string }) {
   const src = photoFor(member);
   return (
