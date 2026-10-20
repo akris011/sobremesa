@@ -197,7 +197,7 @@ expect("owner can't sign a note as a claimed profile", !!r.error, r.error);
 r = await as(A, `insert into recipes (title, contributor_id) values ('forged', $1)`, [aAbuela]);
 expect("owner can't contribute a recipe as a claimed profile", !!r.error, r.error);
 r = await as(A, `update menu_items set preparer_id = $1 where gathering_id = $2 returning id`, [aAbuela, aGath]);
-expect("owner can't assign a dish to a claimed profile", !!r.error, JSON.stringify(r));
+expect("owner can assign a dish to a claimed profile (planning isn't signing)", r.rows?.length === 1, r.error);
 r = await as(A, `update recipes set title = 'Carmen cake (edited)' where id = $1 returning id`, [eRecipe]);
 expect("owner can still edit a recipe a claimed profile contributed", r.rows?.length === 1, r.error);
 r = await as(A, `delete from annotations where id = $1 returning id`, [eNote]);

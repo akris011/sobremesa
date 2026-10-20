@@ -183,8 +183,9 @@ alter table public.annotations alter column cookbook_id set default public.my_co
 -- caller's role.
 
 -- Rows stay in the cookbook (and with the writer) they were created with; a
--- signer (contributor, preparer, note author) can only be set to someone the
--- caller may sign as. Leaving a signer unchanged is fine, so anyone can still
+-- signer (contributor, note author) can only be set to someone the caller may
+-- sign as. A dish's preparer isn't a signature: anyone planning the dinner can
+-- say "Carmen's bringing the flan", so menu_items has no signer column here. Leaving a signer unchanged is fine, so anyone can still
 -- edit a recipe Tía Carmen contributed.
 create function public.guard_shared_row() returns trigger
 language plpgsql set search_path = '' as $$
@@ -222,7 +223,7 @@ create trigger recipes_guard before insert or update on public.recipes
 create trigger gatherings_guard before insert or update on public.gatherings
   for each row execute function public.guard_shared_row();
 create trigger menu_items_guard before insert or update on public.menu_items
-  for each row execute function public.guard_shared_row('preparer_id');
+  for each row execute function public.guard_shared_row();
 create trigger annotations_guard before insert or update on public.annotations
   for each row execute function public.guard_shared_row('author_id');
 
@@ -337,8 +338,7 @@ create policy "members add" on public.menu_items for insert to authenticated
   with check (not is_demo and owner_id = (select auth.uid()) and public.is_cookbook_member(cookbook_id)
               and public.gathering_in(gathering_id, cookbook_id)
               and public.recipe_in(recipe_id, cookbook_id)
-              and public.member_in(preparer_id, cookbook_id)
-              and not public.claimed_by_other(preparer_id));
+              and public.member_in(preparer_id, cookbook_id));
 create policy "members change" on public.menu_items for update to authenticated
   using (public.is_cookbook_member(cookbook_id))
   with check (not is_demo and public.is_cookbook_member(cookbook_id)

@@ -214,6 +214,7 @@ export function PersonPicker({
   defaultValue,
   allowNone,
   noneLabel = "Not decided yet",
+  anyone,
 }: {
   name: string;
   label: string;
@@ -221,8 +222,10 @@ export function PersonPicker({
   defaultValue?: string | null;
   allowNone?: boolean;
   noneLabel?: string;
+  /** Offer everyone, not just who you may sign as (e.g. who's bringing a dish). */
+  anyone?: boolean;
 }) {
-  const people = signable(family, defaultValue);
+  const people = anyone ? family : signable(family, defaultValue);
   const me = people.find((m) => m.mine);
   const [choice, setChoice] = useState<string>(defaultValue ?? (allowNone ? "" : (me ?? people[0])?.id ?? "__new"));
   const chosen = people.find((m) => m.id === choice);

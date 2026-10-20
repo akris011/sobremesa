@@ -116,6 +116,8 @@ const o1 = await owner.from("family_members").update({ name: "hacked" }).eq("id"
 expect("the owner can't change a claimed profile", !o1.data?.length, JSON.stringify(o1.error ?? o1.data));
 const o2 = await owner.from("annotations").insert({ recipe_id: flan, author_id: abuela, body: "forged" });
 expect("the owner can't sign a note as a claimed profile", !!o2.error, o2.error?.code);
+const o3 = await owner.from("menu_items").update({ preparer_id: abuela }).eq("gathering_id", party).eq("recipe_id", flan).select();
+expect("the owner can say a joined person is bringing a dish", o3.data?.length === 1, JSON.stringify(o3.error ?? o3.data));
 const o3 = await owner.from("recipes").insert({ title: "forged", contributor_id: abuela });
 expect("the owner can't sign a recipe as a claimed profile", !!o3.error, o3.error?.code);
 const o4 = await owner.from("annotations").delete().eq("id", guestNote.data?.id).select();
