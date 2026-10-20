@@ -79,7 +79,7 @@ Built after invites merged (`main` merged in at `fdf71af`).
   - `test:rls` 54/54 (sample counts updated, and copies keep photos);
   - `test:import` 16/16;
   - a scripted upload: a PNG chosen on an iPhone-sized page became a 94 KB JPEG, saved into `recipe-photos/<cookbook>/…` and served with status 200. "Take the photo off" removed it.
-- **Not yet:** push the branch to GitHub, PR, deploy. Production still runs the old code, which ignores `photo_url`, so visitors see the 10 sample recipes without photos until the deploy.
+- **Live, 2026-10-20:** PR #7 merged (`f097aff`). Anya deployed it to production (`dpl_Ff1hvrY4NH96Dk59HK7n5Gsu3V5f`). `BASE_URL=https://sobremesa-taupe.vercel.app npm run test:e2e` passes, no console errors. The live home shows the dish photos on the deck cards.
 - **Known gap:** replacing or removing a photo leaves the old file in storage (no cleanup).
 
 ## Verified
