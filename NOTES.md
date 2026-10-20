@@ -8,7 +8,8 @@ Last updated: 2026-10-19, session 3 (recipe import). Deadline: Mon 2026-10-19, 1
 - PR #1 (`feature/mvp`) merged into `main` as a merge commit (`28e5b0a`), keeping the small commits. New work branches off `main`. Repo `akris011/sobremesa` is **private** (must be public before submitting).
 - Supabase project `sobremesa`, ref `nzvpdlddjywgsbnlkfkj` (US East). Migrations applied with `supabase db push`. Email confirmation is off. Auth `site_url` is the Vercel URL; redirect URLs allow it plus localhost:3000/3001 (pushed with `supabase config push`).
 - Vercel: logged in as `akris011`. The project `sobremesa` is linked (`.vercel/`, gitignored). `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set for production and preview.
-- **Live at https://sobremesa-taupe.vercel.app** (deployed by Anya with `npx vercel deploy --prod --yes`; the agent isn't allowed to run production deploys).
+- **Live at https://sobremesa-taupe.vercel.app.** Production deploys are Anya's call (`npx vercel deploy --prod --yes`); the agent runs one only when she asks in that session.
+- **2026-10-19: production runs `feature/recipe-import` at `515189a`** (import + graphics), deployed by the agent at Anya's request **before merging to `main`**. `main` is behind production until that PR merges. `BASE_URL=https://sobremesa-taupe.vercel.app npm run test:e2e`: 24/24, no console errors. Roll back with `npx vercel rollback` if needed.
 - Local secrets: `.env.local` (Supabase URL, publishable key, and a `VERCEL_OIDC_TOKEN` added by `vercel link`), `.env.supabase.local` (DB password). Both gitignored.
 
 ## Verified
