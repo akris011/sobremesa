@@ -42,7 +42,7 @@ type WithUser = FamilyMember & { user_id: string | null };
 function flags({ user_id, ...m }: WithUser, userId: string | null): FamilyMember {
   return { ...m, claimed: !!user_id, mine: !!userId && user_id === userId };
 }
-const RECIPE = `id, is_demo, title, description, story, ingredients, instructions, servings,
+const RECIPE = `id, is_demo, title, description, story, ingredients, instructions, servings, photo_url,
   contributor_id, created_at, updated_at, contributor:family_members(${MEMBER})`;
 
 function check<T>(res: { data: T | null; error: { message: string } | null }): T {

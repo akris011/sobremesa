@@ -21,7 +21,7 @@ const anon = supabase();
 const r1 = await anon.from("recipes").select("id").eq("id", victimRecipe);
 expect("visitor cannot read a private recipe", r1.data?.length === 0, JSON.stringify(r1.error ?? r1.data));
 const r1b = await anon.from("recipes").select("id").eq("is_demo", true);
-expect("visitor can read sample recipes", r1b.data?.length === 6, JSON.stringify(r1b.data?.length));
+expect("visitor can read sample recipes", r1b.data?.length === 10, JSON.stringify(r1b.data?.length));
 const r2 = await anon.from("recipes").insert({ title: "spam" });
 expect("visitor cannot insert", !!r2.error, r2.error?.code);
 const r3 = await anon.from("recipes").update({ title: "hacked" }).eq("id", DEMO_RECIPE).select();
@@ -64,7 +64,7 @@ const c = await signUp("rls-c", "Copier");
 const copied = await c.rpc("copy_sample_cookbook");
 expect("copying the sample into an empty cookbook works", !copied.error, copied.error?.message);
 const { data: { user } } = await c.auth.getUser();
-const want = { family_members: 6, recipes: 6, gatherings: 4, menu_items: 12, annotations: 11 };
+const want = { family_members: 6, recipes: 10, gatherings: 6, menu_items: 21, annotations: 19 };
 for (const [table, n] of Object.entries(want)) {
   const { count } = await c.from(table).select("*", { count: "exact", head: true }).eq("owner_id", user.id);
   expect(`copy made ${n} ${table}`, count === n, `got ${count}`);
@@ -72,7 +72,11 @@ for (const [table, n] of Object.entries(want)) {
 const { count: lineEdits } = await c
   .from("annotations").select("*", { count: "exact", head: true })
   .eq("owner_id", user.id).not("strike_start", "is", null);
-expect("copy keeps the crossed-out line edits", lineEdits === 5, `got ${lineEdits}`);
+expect("copy keeps the crossed-out line edits", lineEdits === 7, `got ${lineEdits}`);
+const { count: photos } = await c
+  .from("recipes").select("*", { count: "exact", head: true })
+  .eq("owner_id", user.id).not("photo_url", "is", null);
+expect("copy keeps the recipe photos", photos === 10, `got ${photos}`);
 const { data: hands } = await c.from("family_members").select("hand").eq("owner_id", user.id).neq("hand", "caveat");
 expect("copy keeps each member's handwriting", hands?.length === 4, `got ${hands?.length}`);
 

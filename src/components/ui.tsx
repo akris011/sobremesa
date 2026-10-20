@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BackIcon, ChevronIcon, Sprig } from "@/components/icons";
-import { Snapshot } from "@/components/snapshot";
+import { DishPhoto, Snapshot } from "@/components/snapshot";
 import type { FamilyMember, Gathering, Recipe } from "@/lib/types";
 import { pen } from "@/lib/pen";
 
@@ -87,7 +87,7 @@ const DECK_INGREDIENTS = 5;
 export function DeckCard({ recipe, index }: { recipe: Recipe; index: number }) {
   const shown = recipe.ingredients.slice(0, DECK_INGREDIENTS);
   const more = recipe.ingredients.length - shown.length;
-  const clearPhoto = recipe.contributor ? "pr-16" : "";
+  const clearPhoto = recipe.photo_url ? "pr-24" : recipe.contributor ? "pr-16" : "";
   return (
     <Link
       href={`/recipes/${recipe.id}`}
@@ -97,7 +97,11 @@ export function DeckCard({ recipe, index }: { recipe: Recipe; index: number }) {
       <div className="flex h-[2.6rem] items-center">
         {recipe.servings && <span className="text-[0.85rem] text-ink-faint italic">Serves {recipe.servings}</span>}
       </div>
-      {recipe.contributor && <Snapshot member={recipe.contributor} className="absolute top-3 right-4 h-[4.4rem] w-[3.8rem] rotate-3" />}
+      {recipe.photo_url ? (
+        <DishPhoto src={recipe.photo_url} className="absolute top-3 right-4 h-[5.4rem] w-[6.2rem] rotate-3" />
+      ) : (
+        recipe.contributor && <Snapshot member={recipe.contributor} className="absolute top-3 right-4 h-[4.4rem] w-[3.8rem] rotate-3" />
+      )}
       <h3 className={`font-display text-[1.6rem] leading-7 font-semibold text-ink group-hover:text-burgundy ${clearPhoto}`}>
         {recipe.title}
       </h3>

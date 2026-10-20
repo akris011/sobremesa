@@ -60,6 +60,28 @@ Anya: tapping a bottom-nav tab took a second or two to show the page. Cause: eve
 - Anya, on her phone (signed out on the preview, since sign-in doesn't carry over between domains): tapping Add recipe lit Family. The live site does the same: signed out, /recipes/new redirects to /login, and the nav lit Family for any /login. Fix: on /login the nav lights the tab named by `?next` (`useSearchParams` inside Suspense, for the prerendered 404). Verified locally; e2e, lint and tsc pass.
 - Preview: https://sobremesa-8d9vvup03-akris011s-projects.vercel.app (behind Vercel login). Anya checked it on her phone (2026-10-19): works. PR to `main` opened. Next: merge, then a production deploy when Anya asks.
 
+## Session 6: recipe photos + more sample data (branch `feature/recipe-photos`, not pushed to GitHub)
+
+Built after invites merged (`main` merged in at `fdf71af`).
+- **Portraits.** Stock portraits removed (Anya: "kinda creepy"). Members show their initial in their ink.
+- **Migration `20261020000000_recipe_photos.sql`:**
+  - adds `recipes.photo_url`, checked to be `/food/<name>.jpg` or `https://`;
+  - adds a public `recipe-photos` bucket at `<cookbook_id>/<file>`. Insert, select and delete are allowed only for `is_cookbook_member`. JPEG only, 5 MB;
+  - re-creates the shared-cookbooks `copy_sample_cookbook()` with `photo_url` added;
+  - sample photos (`public/food`, Wikimedia Commons, see `CREDITS.md`), 4 more recipes, 2 gatherings, notes and 3 line notes.
+  - The "like Mamá said" note and the shortened Mari note are Libreta's line notes, not dashboard edits. They are left as they are.
+- **UI:**
+  - the dish photo is taped at the top of the recipe, and replaces the member snapshot on deck cards;
+  - the recipe form has "A photo of the dish": shrunk to a 1600 px JPEG in the browser, uploaded by `saveRecipe`, with "Take the photo off" to remove it. `serverActions.bodySizeLimit` is 5 MB.
+- **Verified:** `test:db` 104/104 offline (storage stubbed: member uploads, outsider/visitor refused, member deletes, copy keeps photos and line notes, bad `photo_url` refused). tsc and lint are clean.
+- **Pushed** to the live DB by Anya (2026-10-20). Against it, on a production build (port 3001):
+  - `test:e2e` passes, no console errors;
+  - `test:rls` 54/54 (sample counts updated, and copies keep photos);
+  - `test:import` 16/16;
+  - a scripted upload: a PNG chosen on an iPhone-sized page became a 94 KB JPEG, saved into `recipe-photos/<cookbook>/…` and served with status 200. "Take the photo off" removed it.
+- **Not yet:** push the branch to GitHub, PR, deploy. Production still runs the old code, which ignores `photo_url`, so visitors see the 10 sample recipes without photos until the deploy.
+- **Known gap:** replacing or removing a photo leaves the old file in storage (no cleanup).
+
 ## Verified
 
 Session 2, against a production build (`npm run build && npx next start -p 3001`):
