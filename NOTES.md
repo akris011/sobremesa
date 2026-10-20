@@ -12,6 +12,14 @@ Last updated: 2026-10-19, session 3 (recipe import). Deadline: Mon 2026-10-19, 1
 - **2026-10-19:** production runs the import + graphics code (deployed from `feature/recipe-import` at `515189a`, before the merge). PR #3 (graphics) and PR #2 (import) are now merged to `main` (`075ea01`), and `main`'s `src`/`tests` match what's live. `BASE_URL=https://sobremesa-taupe.vercel.app npm run test:e2e`: 24/24, no console errors. Roll back with `npx vercel rollback` if needed.
 - Local secrets: `.env.local` (Supabase URL, publishable key, and a `VERCEL_OIDC_TOKEN` added by `vercel link`), `.env.supabase.local` (DB password). Both gitignored.
 
+## Session 4: tab latency (branch `fix/tab-latency`, not merged or deployed)
+
+Anya: tapping a bottom-nav tab took a second or two to show the page. Cause: every page is dynamic, so a tap showed the `loading.tsx` skeleton and waited on a fresh server render (~320 ms from a laptop on the live site; more on a phone network or a cold function). Server and auth weren't the problem: TTFB ~150 ms, `getClaims` verifies locally (ES256 keys, JWKS cached), Vercel iad1 sits next to Supabase us-east-1.
+- Fix: bottom-nav `<Link prefetch>` (full prefetch) + `experimental.staleTimes { dynamic: 30, static: 60 }` in `next.config.ts`. Every server action already calls `revalidatePath`, which clears the client cache.
+- Verified on a production build (port 3001): tab taps went from ~320 ms to ~20 ms with no skeleton. Freshness check (a throwaway script, not committed): a new gathering and a new recipe show up right away when you open their tab; after sign-out, the tabs show none of the account's data. `test:e2e` 24/24 with no console errors, `test:rls` 22/22, `test:import` 13/13, lint and tsc clean.
+- Trade-off: a change made on another device shows on the tabs within 60 s, not at once (iOS standalone mode has no pull-to-refresh).
+- Next: Anya to try it on her phone after a preview deploy.
+
 ## Verified
 
 Session 2, against a production build (`npm run build && npx next start -p 3001`):
