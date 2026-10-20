@@ -17,7 +17,8 @@ const db = new PGlite({ extensions: { pgcrypto } });
 
 let pass = 0, fail = 0;
 const expect = (name, ok, detail = "") => {
-  ok ? pass++ : fail++;
+  if (ok) pass++;
+  else fail++;
   console.log(ok ? "PASS" : "FAIL", name, process.env.V || !ok ? detail : "");
 };
 
@@ -153,8 +154,6 @@ r = await as(B, `select * from cookbooks`);
 expect("B reads only its own cookbook", r.rows.length === 1);
 
 // --- Invites ---------------------------------------------------------------------
-r = await as(B, `select public.create_invite()`);
-const bToken = r.rows?.[0]?.create_invite;
 const token = (await one(A, `select public.create_invite() t`)).t;
 expect("owner makes an invite of >=128 bits", /^[0-9a-f]{64}$/.test(token), token);
 expect("asking again returns the same open link", (await one(A, `select public.create_invite() t`)).t === token);
@@ -267,7 +266,6 @@ r = await as(A, `delete from family_members where id = $1 returning id`, [aAbuel
 expect("claimed profiles can't be removed", !r.error && r.rows.length === 0);
 r = await as(A, `delete from recipes where id = $1 returning id`, [eRecipe]);
 expect("any member removes a recipe", r.rows?.length === 1, r.error);
-void bToken;
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
