@@ -59,6 +59,23 @@ Rules for running them side by side:
 - **There is only one Supabase project, and the live app uses it.** `supabase db push` from the invites branch changes production right away, while the deployed code still expects the old schema. Either make the migration additive (add `cookbook_id` and the new tables without breaking `owner_id` queries, and drop old columns only after the new code is deployed), or create a second free Supabase project as staging first. Decide this before the first push.
 - Vercel isn't connected to the GitHub repo, so merging to `main` does **not** deploy. Connect it (Vercel dashboard → Project → Settings → Git) to get a production deploy on merge and a preview URL per PR. Previews also use the one Supabase project.
 
+## Graphics branch (`feature/graphics`, worktree `../sobremesa-graphics`)
+
+Goal: a homier, less generic look, merged in with the feature branches later. No migrations.
+- Done (`da2d80a`):
+  - Home opens on a swipeable deck of lined index cards (`RecipeDeck`, CSS scroll-snap, arrows and "Card 2 of 6").
+  - Each card shows the ingredients in the contributor's hand and ink, plus a taped `Snapshot` of them.
+  - "The whole box" (`/?view=box`) lists every recipe A–Z behind divider tabs.
+  - The recipe header has the snapshot, and its text sits on the printed lines.
+- Photos: `photoFor(member)` in `src/lib/photos.ts` is the only place that picks a member's picture.
+  - The 5 sample Morenos have placeholder portraits from randomuser.me in `public/people/`, keyed by their fixed ids.
+  - Everyone else, including members copied from the sample (they get new ids), shows their initial in their ink.
+  - Real uploads (after invites merges): Storage bucket, policies on the cookbook (not `owner_id`, which invites replaces), then have `photoFor` return the stored URL first. Cards don't change.
+  - Before the repo goes public, decide whether the randomuser portraits can stay. Their license is informal; Unsplash or illustrations would be cleaner. There's no old-looking face, so Abuela's photo is younger than she should be.
+- Verified: tsc, lint and build pass; `test:e2e` 20/20 against a production build on port 3002; screenshots at 375px.
+- Next ideas: restyle gatherings and the margin notes to match; check the deck on a real iPhone (swipe vs. the edge-swipe-back gesture).
+- Merge risk: `ui.tsx` and `recipes/[id]/page.tsx` may conflict with recipe-import. Merge this after the feature branches and resolve the conflicts here.
+
 ## Open questions
 
 1. Deadline risk: both features land the day of submission. Recommended order:
