@@ -4,6 +4,14 @@ Goal: a cook shares one link ("Join the Moreno family cookbook on Sobremesa") in
 
 Branch: `feature/invites`, PR to `main`. This task **owns all migrations** while it runs; the import task adds none in phase 1.
 
+## Decided with Anya (2026-10-19)
+
+- **One reusable group-chat link per cookbook.** Not single-use links.
+- **People make their own profile when they join.** Opening the invite link → sign up or sign in → "Which one are you?" (claim an unlinked person) or "I'm not listed" (create themselves) → choose their own name, ink and handwriting with the existing `PenFields` signature form (`src/components/form-bits.tsx`).
+- **A claimed profile belongs to its person.** Once `family_members.user_id` is set, only that account can change its name, relation, ink and hand, and only that account can sign notes, recipes or dishes as that person. Enforce in RLS, not just the UI.
+- Members can still add people without accounts (Abuela won't sign up). Those profiles stay editable by any member until someone claims them. (Recommended by the agent; Anya didn't object. Confirm in the PR.)
+- Base the branch on `feature/libreta` (PR open, its migration `20261019000000_libreta.sql` is already live). Inks/hands from that branch must keep working.
+
 ## Why this is the risky one
 
 Today every row belongs to one account (`owner_id = auth.uid()`), and every RLS policy, `data.ts` query, `owns_*` helper and `copy_sample_cookbook()` assumes that. Sharing replaces the ownership model. Do it in a **new migration**; never edit the applied ones.
