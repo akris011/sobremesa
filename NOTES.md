@@ -14,6 +14,8 @@ Last updated: 2026-10-19, session 5 (family invites; migration NOT pushed). Dead
 
 ## Session 5: family invites (branch `feature/invites`, worktree `../sobremesa-invites`)
 
+**Status 2026-10-19 (late):** migration applied to the live project (Anya ran `supabase db push`); then `test:rls` 53/53 and `test:e2e` 31/31 (two-phone join included) against it, no console errors. Anya decided: anyone can set who's bringing a dish, even a joined person; account deletion stays as is. Branch pushed, PR #6 open (not merged), and **deployed to production** from `feature/invites` (`sobremesa-taupe.vercel.app` now runs it, ahead of `main`). Next: merge PR #6 so `main` matches production; try the invite on real phones (share sheet, join, claim).
+
 Built from `docs/tasks/family-invites.md` and its "Decided with Anya" section, on top of `main` after libreta and tab-latency merged (`e4dcb20`). **The migration is not pushed, nothing is deployed, nothing is pushed to GitHub.**
 
 What changed:
