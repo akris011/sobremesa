@@ -21,7 +21,9 @@ Session 2, against a production build (`npm run build && npx next start -p 3001`
 
 Each test run creates new Supabase accounts. Set `TEST_EMAIL="you+{tag}@gmail.com"` to make them yours and easy to delete.
 
-## Session 3: recipe import (branch `feature/recipe-import`, not merged)
+## Session 3: recipe import (branch `feature/recipe-import`, not merged to main)
+
+`feature/graphics` (card deck, member photos) was merged into this branch on 2026-10-19 with no conflicts (only NOTES.md overlapped). On the combined build, `test:import` passes 13/13, `test:e2e` 24/24 with no console errors, `test:rls` 22/22, and lint, tsc and build are clean. The home deck renders with photos. One PR from this branch to `main` now carries both.
 
 Built per `docs/tasks/recipe-import.md` phase 1, but **with no paid API** (Anya's call). /recipes/import ("Bring in a recipe", linked from /recipes/new) has three tabs; each lands on the normal form as a draft, saved only on "Add to the cookbook".
 - Link: server fetch (`src/lib/import/fetch-page.ts`) reading schema.org JSON-LD. https only, port 443, no credentials in the URL; private/loopback/link-local ranges are rejected inside the request's own DNS lookup (no rebinding gap); 8 s, 2 MB, every redirect rechecked. Signed-in only. No JSON-LD → message suggesting Save as PDF or paste.
@@ -87,6 +89,23 @@ Rules for running them side by side:
 - Each worktree runs its production server on its own port (e.g. 3001 and 3002) and sets `BASE_URL` for `test:e2e`.
 - **There is only one Supabase project, and the live app uses it.** `supabase db push` from the invites branch changes production right away, while the deployed code still expects the old schema. Either make the migration additive (add `cookbook_id` and the new tables without breaking `owner_id` queries, and drop old columns only after the new code is deployed), or create a second free Supabase project as staging first. Decide this before the first push.
 - Vercel isn't connected to the GitHub repo, so merging to `main` does **not** deploy. Connect it (Vercel dashboard → Project → Settings → Git) to get a production deploy on merge and a preview URL per PR. Previews also use the one Supabase project.
+
+## Graphics branch (`feature/graphics`, worktree `../sobremesa-graphics`)
+
+Goal: a homier, less generic look, merged in with the feature branches later. No migrations.
+- Done (`da2d80a`):
+  - Home opens on a swipeable deck of lined index cards (`RecipeDeck`, CSS scroll-snap, arrows and "Card 2 of 6").
+  - Each card shows the ingredients in the contributor's hand and ink, plus a taped `Snapshot` of them.
+  - "The whole box" (`/?view=box`) lists every recipe A–Z behind divider tabs.
+  - The recipe header has the snapshot, and its text sits on the printed lines.
+- Photos: `photoFor(member)` in `src/lib/photos.ts` is the only place that picks a member's picture.
+  - The 5 sample Morenos have placeholder portraits from randomuser.me in `public/people/`, keyed by their fixed ids.
+  - Everyone else, including members copied from the sample (they get new ids), shows their initial in their ink.
+  - Real uploads (after invites merges): Storage bucket, policies on the cookbook (not `owner_id`, which invites replaces), then have `photoFor` return the stored URL first. Cards don't change.
+  - Before the repo goes public, decide whether the randomuser portraits can stay. Their license is informal; Unsplash or illustrations would be cleaner. There's no old-looking face, so Abuela's photo is younger than she should be.
+- Verified: tsc, lint and build pass; `test:e2e` 20/20 against a production build on port 3002; screenshots at 375px.
+- Next ideas: restyle gatherings and the margin notes to match; check the deck on a real iPhone (swipe vs. the edge-swipe-back gesture).
+- Merge risk: `ui.tsx` and `recipes/[id]/page.tsx` may conflict with recipe-import. Merge this after the feature branches and resolve the conflicts here.
 
 ## Open questions
 

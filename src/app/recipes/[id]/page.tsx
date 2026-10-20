@@ -6,6 +6,7 @@ import { Byline, formatDate, SampleBanner, SectionHeading, TopBar } from "@/comp
 import { AnnotationForm } from "@/components/annotation-form";
 import { deleteAnnotation } from "@/app/actions";
 import { CloseIcon } from "@/components/icons";
+import { Snapshot } from "@/components/snapshot";
 
 export async function generateMetadata({ params }: PageProps<"/recipes/[id]">): Promise<Metadata> {
   const data = await getRecipe((await params).id);
@@ -40,14 +41,20 @@ export default async function RecipePage({ params, searchParams }: PageProps<"/r
       )}
 
       <article>
-        <header className="index-card index-card-lined mt-3 px-5 pt-2.5 pb-6">
-          <div className="flex h-8 items-center justify-between">
-            <span className="eyebrow">Family recipe</span>
-            {recipe.servings && <span className="eyebrow">Serves {recipe.servings}</span>}
+        <header className="index-card index-card-lined relative mt-4 -rotate-[0.4deg] px-5 pb-6">
+          <div className="flex h-[2.6rem] items-center">
+            {recipe.servings && <span className="text-[0.9rem] text-ink-faint italic">Serves {recipe.servings}</span>}
           </div>
-          <h1 className="mt-4 font-display text-[2.4rem] leading-[1.05] font-semibold text-ink">{recipe.title}</h1>
-          {recipe.description && <p className="mt-2 leading-7 text-ink-soft">{recipe.description}</p>}
-          <p className="mt-3 text-[0.95rem] leading-7">
+          {recipe.contributor && (
+            <Snapshot member={recipe.contributor} className="absolute top-3 right-4 h-[5.6rem] w-[4.8rem] rotate-3" />
+          )}
+          <h1
+            className={`font-display text-[2.3rem] leading-[3.5rem] font-semibold text-ink ${recipe.contributor ? "pr-20" : ""}`}
+          >
+            {recipe.title}
+          </h1>
+          {recipe.description && <p className="leading-7 text-ink-soft">{recipe.description}</p>}
+          <p className="text-[0.95rem] leading-7">
             <Byline member={recipe.contributor} prefix="Passed down by" />
           </p>
         </header>
