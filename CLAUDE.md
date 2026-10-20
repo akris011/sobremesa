@@ -23,6 +23,8 @@ Sobremesa: a mobile-first family cookbook PWA built around gatherings. Recipes, 
 - Reads: Server Components call `src/lib/data.ts`. Each query is filtered to the signed-in user's rows, or to `is_demo = true` for visitors. That filter picks what to show; RLS is what enforces access.
 - Writes: Server Actions in `src/app/actions.ts`, called from client forms via `useActionState`. They return `{ error }` / `{ ok }` or redirect, and `revalidatePath("/", "layout")` after changes.
 - Recipe import: pure parsers in `src/lib/import/` (`jsonld.ts`, `text.ts`, no `@/` imports so Node runs them in tests), the guarded link fetcher in `fetch-page.ts` (server-only), the one server action in `src/app/import-actions.ts`. Photos and PDFs are read in the browser (`read-file.ts`); Tesseract and the pdf.js worker load from jsDelivr at pinned versions. No paid API: don't add a model call without asking.
+- Anything a family member wrote is drawn with `pen(member)` from `src/lib/pen.ts` (their hand class + ink color inline). Inks are 12 named pens or a custom `#rrggbb`, darkened to stay readable; never use per-ink CSS classes.
+- La Libreta: a note can sit on one ingredient/step line (`line_text`) and cross out a range of it (`strike_start/end`) with a `replacement`. The recipe row never changes. Notes whose line has since changed fall back to the margin (`placeNotes` in `src/lib/libreta.ts`).
 - "Family members" are people, not accounts. Forms choose one, or pick "Someone new…" (`__new`) and type a name + ink; `resolvePerson` creates the member inline.
 - Schema, RLS, signup trigger and `copy_sample_cookbook()` RPC: `supabase/migrations/*_init.sql`. Sample (Moreno family) data: `*_sample_cookbook.sql`. Schema changes go in a new migration file, never by editing applied ones.
 
@@ -30,7 +32,7 @@ Sobremesa: a mobile-first family cookbook PWA built around gatherings. Recipes, 
 
 - Every table has RLS. Write policies must also check that referenced rows (recipe, gathering, family member) belong to the caller; use the `owns_*` helpers.
 - Demo rows (`is_demo`, `owner_id null`) are never writable through the API. Don't add a service-role key to get around this.
-- Design: aged paper, warm brown ink, burgundy accent. Fonts: Cormorant Garamond (display), Newsreader (body), Caveat (handwriting only). No emoji icons (inline SVGs live in `src/components/icons.tsx`), no gradients, no heavy rounded cards. Use the `.index-card`, `.field`, `.btn`, `.eyebrow`, `.hand`, `.ink-*` classes rather than one-off styles.
+- Design: aged paper, warm brown ink, burgundy accent. Fonts: Cormorant Garamond (display), Newsreader (body), and for handwriting only Caveat (default) plus the five other hands in `src/lib/pen.ts`. No emoji icons (inline SVGs live in `src/components/icons.tsx`), no gradients, no heavy rounded cards. Use the `.index-card`, `.field`, `.btn`, `.eyebrow`, `.hand`, `.ink-*` classes rather than one-off styles.
 - Phone first (375–430px). Inputs at 16px+ so iOS doesn't zoom. Respect safe-area insets; the bottom nav height is `--nav-h`.
 - UI copy is plain and specific ("Add to the menu", not "Submit"). No marketing tone.
 - Forms that call a `useActionState` action use `<ActionForm>` from `form-bits.tsx`, not `<form action>`; React's auto-reset would wipe the fields on a validation error.

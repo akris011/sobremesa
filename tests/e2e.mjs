@@ -44,6 +44,7 @@ try {
   await page.selectOption('select[name="contributor"]', "__new");
   await page.fill('input[name="contributor_name"]', "Mami");
   await page.click('label:has(input[name="contributor_ink"][value="plum"])');
+  await page.click('label:has(input[name="contributor_hand"][value="kalam"])');
   await page.fill('input[name="servings"]', "8");
   await page.fill('textarea[name="ingredients"]', "1 cup sugar\n- 5 eggs\n1 can condensed milk");
   await page.fill('textarea[name="instructions"]', "1. Make the caramel.\n2. Whisk and bake.");
@@ -66,6 +67,22 @@ try {
   await page.getByText("I add a pinch of cinnamon.").waitFor();
   step("margin note added");
   await shot("02_recipe");
+
+  // La Libreta: rewrite one line; the changed words are crossed out, not replaced.
+  await page.getByRole("button", { name: /1 cup sugar/ }).click();
+  const editor = page.locator('form:has(input[name="line_text"][value="1 cup sugar"])');
+  await editor.locator('select[name="author"]').selectOption({ label: "Mami" });
+  await editor.locator('textarea[name="rewrite"]').fill("3/4 cup sugar");
+  await editor.locator('input[name="body"]').fill("too sweet otherwise");
+  await editor.locator('button:has-text("Write it in")').click();
+  await page.locator("del.struck", { hasText: "1" }).waitFor();
+  if ((await page.locator("ins.pen-edit").innerText()).trim() !== "3/4") throw new Error("replacement not written in");
+  if (!(await page.locator("ins.pen-edit.hand-kalam").count())) throw new Error("edit not in the writer's hand");
+  await page.click('label:has-text("Show it as first written")');
+  if (await page.locator("ins.pen-edit").isVisible()) throw new Error("original toggle didn't hide edits");
+  await page.click('label:has-text("Show it as first written")');
+  step("line rewritten: '1' crossed out, '3/4' in Mami's hand; original toggle hides it");
+  await shot("02b_line_edit");
 
   await page.goto(base + "/gatherings/new");
   await page.fill('input[name="name"]', "Abuela's birthday");
@@ -99,7 +116,25 @@ try {
   const res = await page.goto(base + "/recipes/d0000000-0000-4000-8000-000000000201/edit");
   step(`sample recipe edit page for signed-in user → ${res.status()}`);
 
+  // A new person with their own color and hand, then a change to an existing one.
   await page.goto(base + "/account");
+  await page.click('summary:has-text("Add someone to the family")');
+  await page.fill('input[name="name"]', "Tía Lucia");
+  await page.locator('input[type="color"]').fill("#ffd400");
+  await page.click('label:has(input[name="hand"][value="homemade"])');
+  await page.getByText("Darkened a little so it reads on the page.").waitFor();
+  await page.click('button:has-text("Add to the family")');
+  const lucia = page.locator("li button", { hasText: "Tía Lucia" }).locator("span.hand-homemade");
+  await lucia.waitFor();
+  const color = await lucia.evaluate((el) => getComputedStyle(el).color);
+  if (color === "rgb(255, 212, 0)") throw new Error("pale custom ink was not darkened");
+  await page.locator("li button", { hasText: "Mami" }).click();
+  await page.click('label:has(input[name="hand"][value="gochi"])');
+  await page.click('button:has-text("Save Mami")');
+  await page.locator("li button", { hasText: "Mami" }).locator("span.hand-gochi").waitFor();
+  step(`family: custom ink darkened to ${color}; Mami's hand changed`);
+  await shot("02c_family");
+
   await page.click('button:has-text("Sign out")');
   await page.waitForURL(base + "/");
   await page.getByText("The Moreno family cookbook").waitFor();

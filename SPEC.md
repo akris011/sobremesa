@@ -7,9 +7,10 @@ A family cookbook organized around the gatherings where recipes are served. Sour
 In:
 - Cookbook: browse, view, add, edit, delete recipes (title, description, servings, ingredients, method, story, contributor).
 - Gatherings: create, browse upcoming/past, view, delete. Menu built from cookbook recipes, each dish with an optional preparer and note.
-- Margin notes: handwritten-style annotations on a recipe, each by a family member in that member's ink. The recipe text is never changed by a note.
+- Margin notes: handwritten-style annotations on a recipe, each by a family member in that member's ink and hand. The recipe text is never changed by a note.
+- La Libreta (line edits): tap an ingredient or step, choose who's writing, rewrite it. The changed words are crossed out in their ink and their version is written beside it; a note can go beside the line too. "Show it as first written" hides every edit. If the recipe itself is later edited and the line changes, its notes move to the margin.
 - Recipe history: every gathering a recipe was served at, and who made it.
-- Family: named people (not accounts) with an ink color. Used as recipe contributor, note author and dish preparer.
+- Family: named people (not accounts) with an ink (12 named pens or a custom color, darkened if too pale to read) and a handwriting (Caveat by default, 6 to choose from), shown as a live signature while choosing. Name, relation, ink and hand can be changed later. Used as recipe contributor, note author and dish preparer.
 - Auth: email + password (Supabase). One cookbook per account.
 - Public sample cookbook (the fictional Moreno family), read-only, shown to signed-out visitors. Signed-in users can copy it into their own cookbook.
 - Installable PWA (manifest, icons, standalone, safe areas).
@@ -25,11 +26,11 @@ All tables: `owner_id` (auth user, null for sample rows), `is_demo`.
 
 | Table | Key fields | Notes |
 |---|---|---|
-| family_members | name, relation, ink | ink ∈ sepia, burgundy, olive, terracotta, indigo, plum. A trigger creates one for each new account. |
+| family_members | name, relation, ink, hand | ink ∈ 12 named pens or `#rrggbb`; hand ∈ caveat, kalam, cedarville, homemade, reenie, gochi. A trigger creates one for each new account. |
 | recipes | title, description, story, ingredients[], instructions[], servings, contributor_id → family_members | |
 | gatherings | name, held_on (date), location, description | Upcoming = held_on ≥ today. |
 | menu_items | gathering_id, recipe_id, preparer_id → family_members, note | unique (gathering_id, recipe_id): a dish can't be on a menu twice. |
-| annotations | recipe_id, author_id → family_members, body | |
+| annotations | recipe_id, author_id → family_members, body, line_kind, line_text, strike_start, strike_end, replacement | Line fields are null for a general margin note. |
 
 RLS on every table:
 - Select: `is_demo or owner_id = auth.uid()`.
@@ -53,6 +54,8 @@ Checked = verified in a browser or against the API; see NOTES.md for how.
 - [x] Sign up and sign in work; sign out returns to the sample cookbook.
 - [x] Created recipe persists after reload.
 - [x] Margin note shows in the author's ink with name and date.
+- [x] Line edit: rewriting "1 cup sugar" as "3/4 cup sugar" crosses out "1" and writes "3/4" in the writer's hand and ink; "Show it as first written" hides it. (`test:e2e`, `test:import` for the diff.)
+- [x] New family member with a pale custom color gets it darkened; hand and ink can be changed later. (`test:e2e`)
 - [x] Gathering created; recipe added with a preparer; adding the same recipe again is impossible.
 - [x] That gathering appears in the recipe's history with the preparer.
 - [x] A second account cannot read or change the first account's rows (checked via the API, not just the UI).
