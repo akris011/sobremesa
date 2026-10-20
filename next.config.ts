@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
   // changes made on another device show within a minute.
   experimental: {
     staleTimes: { dynamic: 30, static: 60 },
+    // Recipe photos are shrunk on the phone before upload (see PhotoField), so
+    // they arrive well under this.
+    serverActions: { bodySizeLimit: "5mb" },
   },
   turbopack: {
     rules: {

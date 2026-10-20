@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCookbook } from "@/lib/data";
 import { safeNextPath } from "@/lib/safe-next";
 import { diffLine } from "@/lib/libreta";
 import { isHand, parseInk } from "@/lib/pen";
@@ -129,6 +130,9 @@ export async function saveRecipe(_: FormState, fd: FormData): Promise<FormState>
   const person = await resolvePerson(supabase, fd, "contributor");
   if ("error" in person) return person;
 
+  const photo = await savePhoto(supabase, fd);
+  if (photo && "error" in photo) return photo;
+
   const row = {
     title,
     description: text(fd, "description") || null,
@@ -137,6 +141,7 @@ export async function saveRecipe(_: FormState, fd: FormData): Promise<FormState>
     instructions,
     servings,
     contributor_id: person.id,
+    ...(photo ? { photo_url: photo.url } : {}),
   };
 
   const { data, error } = id
@@ -146,6 +151,27 @@ export async function saveRecipe(_: FormState, fd: FormData): Promise<FormState>
 
   revalidatePath("/", "layout");
   redirect(`/recipes/${data.id}?saved=1`);
+}
+
+const PHOTO_MAX = 4 * 1024 * 1024; // the form shrinks photos to well under this
+
+/**
+ * The recipe photo from the form: a new upload, "remove", or untouched (null).
+ * Uploads go to the cookbook's folder in the recipe-photos bucket; storage
+ * policies check the caller is a member of that cookbook.
+ */
+async function savePhoto(supabase: Supabase, fd: FormData): Promise<{ url: string | null } | { error: string } | null> {
+  if (fd.get("remove_photo") === "on") return { url: null };
+  const file = fd.get("photo");
+  if (!(file instanceof File) || file.size === 0) return null;
+  if (file.type !== "image/jpeg") return { error: "That photo couldn't be read. Try a JPEG or a photo from your camera." };
+  if (file.size > PHOTO_MAX) return { error: "That photo is too large. Try a smaller one." };
+  const cookbook = await getCookbook();
+  if (!cookbook) return { error: "Sign in to add a photo." };
+  const path = `${cookbook.id}/${crypto.randomUUID()}.jpg`;
+  const { error } = await supabase.storage.from("recipe-photos").upload(path, file, { contentType: "image/jpeg" });
+  if (error) return { error: "The photo didn't upload. Try again." };
+  return { url: supabase.storage.from("recipe-photos").getPublicUrl(path).data.publicUrl };
 }
 
 export async function deleteRecipe(fd: FormData) {
