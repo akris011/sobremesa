@@ -8,7 +8,7 @@ A family cookbook organized around the dinners where the recipes get made. Each 
 
 1. Open the link signed out. You're reading the sample cookbook of the Moreno family (fictional). Swipe the deck, open a recipe, read the margin notes and "At the table", open a gathering.
 2. Tap **Start your own** and sign up (name, email, password; no confirmation email).
-3. Your cookbook starts empty. Write a recipe, or copy the Moreno recipes in with **Start from the sample recipes**.
+3. Your cookbook starts empty. Write a recipe, or copy the Moreno recipes in with **Or start from the sample recipes**.
 4. Add a recipe, or use **Bring in a recipe** to start from a link, a photo, a PDF or pasted text. Nothing saves until you press "Add to the cookbook".
 5. On a recipe, write in the margin as yourself or as a new family member with their own ink.
 6. Plan a gathering, add dishes from the cookbook and choose who's bringing each one. The recipe's "At the table" history then lists that dinner.
