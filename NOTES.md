@@ -74,10 +74,12 @@ Built after invites merged (`main` merged in at `fdf71af`).
   - the dish photo is taped at the top of the recipe, and replaces the member snapshot on deck cards;
   - the recipe form has "A photo of the dish": shrunk to a 1600 px JPEG in the browser, uploaded by `saveRecipe`, with "Take the photo off" to remove it. `serverActions.bodySizeLimit` is 5 MB.
 - **Verified:** `test:db` 104/104 offline (storage stubbed: member uploads, outsider/visitor refused, member deletes, copy keeps photos and line notes, bad `photo_url` refused). tsc and lint are clean.
-- **Not yet:**
-  - `supabase db push`: the agent's push was blocked pending Anya's OK;
-  - production build + e2e + on-device check, which need the push first;
-  - deploy.
+- **Pushed** to the live DB by Anya (2026-10-20). Against it, on a production build (port 3001):
+  - `test:e2e` passes, no console errors;
+  - `test:rls` 54/54 (sample counts updated, and copies keep photos);
+  - `test:import` 16/16;
+  - a scripted upload: a PNG chosen on an iPhone-sized page became a 94 KB JPEG, saved into `recipe-photos/<cookbook>/…` and served with status 200. "Take the photo off" removed it.
+- **Not yet:** push the branch to GitHub, PR, deploy. Production still runs the old code, which ignores `photo_url`, so visitors see the 10 sample recipes without photos until the deploy.
 - **Known gap:** replacing or removing a photo leaves the old file in storage (no cleanup).
 
 ## Verified
