@@ -9,8 +9,17 @@ Last updated: 2026-10-19, session 3 (recipe import). Deadline: Mon 2026-10-19, 1
 - Supabase project `sobremesa`, ref `nzvpdlddjywgsbnlkfkj` (US East). Migrations applied with `supabase db push`. Email confirmation is off. Auth `site_url` is the Vercel URL; redirect URLs allow it plus localhost:3000/3001 (pushed with `supabase config push`).
 - Vercel: logged in as `akris011`. The project `sobremesa` is linked (`.vercel/`, gitignored). `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set for production and preview.
 - **Live at https://sobremesa-taupe.vercel.app.** Production deploys are Anya's call (`npx vercel deploy --prod --yes`); the agent runs one only when she asks in that session.
-- **2026-10-19: production runs `feature/recipe-import` at `515189a`** (import + graphics), deployed by the agent at Anya's request **before merging to `main`**. `main` is behind production until that PR merges. `BASE_URL=https://sobremesa-taupe.vercel.app npm run test:e2e`: 24/24, no console errors. Roll back with `npx vercel rollback` if needed.
+- **2026-10-19:** production runs the import + graphics code (deployed from `feature/recipe-import` at `515189a`, before the merge). PR #3 (graphics) and PR #2 (import) are now merged to `main` (`075ea01`), and `main`'s `src`/`tests` match what's live. `BASE_URL=https://sobremesa-taupe.vercel.app npm run test:e2e`: 24/24, no console errors. Roll back with `npx vercel rollback` if needed.
 - Local secrets: `.env.local` (Supabase URL, publishable key, and a `VERCEL_OIDC_TOKEN` added by `vercel link`), `.env.supabase.local` (DB password). Both gitignored.
+
+## Session 4: tab latency (branch `fix/tab-latency`, not merged or deployed)
+
+Anya: tapping a bottom-nav tab took a second or two to show the page. Cause: every page is dynamic, so a tap showed the `loading.tsx` skeleton and waited on a fresh server render (~320 ms from a laptop on the live site; more on a phone network or a cold function). Server and auth weren't the problem: TTFB ~150 ms, `getClaims` verifies locally (ES256 keys, JWKS cached), Vercel iad1 sits next to Supabase us-east-1.
+- Fix: bottom-nav `<Link prefetch>` (full prefetch) + `experimental.staleTimes { dynamic: 30, static: 60 }` in `next.config.ts`. Every server action already calls `revalidatePath`, which clears the client cache.
+- Verified on a production build (port 3001): tab taps went from ~320 ms to ~20 ms with no skeleton. Freshness check (a throwaway script, not committed): a new gathering and a new recipe show up right away when you open their tab; after sign-out, the tabs show none of the account's data. `test:e2e` 24/24 with no console errors, `test:rls` 22/22, `test:import` 13/13, lint and tsc clean.
+- Trade-off: a change made on another device shows on the tabs within 60 s, not at once (iOS standalone mode has no pull-to-refresh).
+- Anya, on her phone (signed out on the preview, since sign-in doesn't carry over between domains): tapping Add recipe lit Family. The live site does the same: signed out, /recipes/new redirects to /login, and the nav lit Family for any /login. Fix: on /login the nav lights the tab named by `?next` (`useSearchParams` inside Suspense, for the prerendered 404). Verified locally; e2e, lint and tsc pass.
+- Preview: https://sobremesa-8d9vvup03-akris011s-projects.vercel.app (behind Vercel login). Anya checked it on her phone (2026-10-19): works. PR to `main` opened. Next: merge, then a production deploy when Anya asks.
 
 ## Verified
 
@@ -22,7 +31,7 @@ Session 2, against a production build (`npm run build && npx next start -p 3001`
 
 Each test run creates new Supabase accounts. Set `TEST_EMAIL="you+{tag}@gmail.com"` to make them yours and easy to delete.
 
-## Session 3: recipe import (branch `feature/recipe-import`, not merged to main)
+## Session 3: recipe import (merged to `main` via PR #2)
 
 `feature/graphics` (card deck, member photos) was merged into this branch on 2026-10-19 with no conflicts (only NOTES.md overlapped). On the combined build, `test:import` passes 13/13, `test:e2e` 24/24 with no console errors, `test:rls` 22/22, and lint, tsc and build are clean. The home deck renders with photos. One PR from this branch to `main` now carries both.
 
@@ -78,7 +87,7 @@ Not done / open:
 
 Briefs live in `docs/tasks/`. Each session reads this file, then its brief.
 - `docs/tasks/family-invites.md`: shared cookbooks plus a join link. Rewrites RLS; owns all migrations while it runs.
-- `docs/tasks/recipe-import.md`: phase 1 built in session 3 (free, no API key) on `feature/recipe-import`; needs the on-device check, then a PR.
+- `docs/tasks/recipe-import.md`: phase 1 built and merged (PR #2, free, no API key). Still to try on a phone: a photographed printed page and a handwritten card.
 
 Rules for running them side by side:
 - Branch both off `main`.
