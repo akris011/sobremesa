@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Caveat, Cormorant_Garamond, Newsreader } from "next/font/google";
+import { Caveat, Cedarville_Cursive, Cormorant_Garamond, Gochi_Hand, Homemade_Apple, Kalam, Newsreader, Reenie_Beanie } from "next/font/google";
 import { BottomNav } from "@/components/bottom-nav";
 import "./globals.css";
 
@@ -20,6 +20,16 @@ const caveat = Caveat({
   variable: "--font-caveat",
   subsets: ["latin"],
 });
+
+// The other handwriting styles a family member can choose. Not preloaded: a page
+// only downloads the hands that appear on it.
+// next/font needs literal options, so each is spelled out.
+const kalam = Kalam({ variable: "--font-kalam", subsets: ["latin", "latin-ext"], weight: "400", preload: false });
+const cedarville = Cedarville_Cursive({ variable: "--font-cedarville", subsets: ["latin"], weight: "400", preload: false });
+const homemade = Homemade_Apple({ variable: "--font-homemade", subsets: ["latin"], weight: "400", preload: false });
+const reenie = Reenie_Beanie({ variable: "--font-reenie", subsets: ["latin"], weight: "400", preload: false });
+const gochi = Gochi_Hand({ variable: "--font-gochi", subsets: ["latin"], weight: "400", preload: false });
+const hands = [kalam, cedarville, homemade, reenie, gochi].map((f) => f.variable).join(" ");
 
 export const metadata: Metadata = {
   title: { default: "Sobremesa", template: "%s · Sobremesa" },
@@ -42,7 +52,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${newsreader.variable} ${caveat.variable}`}>
+    <html lang="en" className={`${cormorant.variable} ${newsreader.variable} ${caveat.variable} ${hands}`}>
       <body className="min-h-dvh">
         <div
           className="mx-auto min-h-dvh max-w-xl px-5"

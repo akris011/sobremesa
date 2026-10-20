@@ -9,7 +9,7 @@ const TABS = [
   { href: "/", label: "Cookbook", Icon: BookIcon, match: (p: string) => p === "/" || (p.startsWith("/recipes") && p !== "/recipes/new") },
   { href: "/gatherings", label: "Gatherings", Icon: TableIcon, match: (p: string) => p.startsWith("/gatherings") },
   { href: "/recipes/new", label: "Add recipe", Icon: PenIcon, match: (p: string) => p === "/recipes/new" },
-  { href: "/account", label: "Family", Icon: PersonIcon, match: (p: string) => p.startsWith("/account") || p.startsWith("/login") },
+  { href: "/account", label: "Family", Icon: PersonIcon, match: (p: string) => p.startsWith("/account") || p.startsWith("/login") || p.startsWith("/join") },
 ];
 
 // Signed-out taps on Add recipe land on /login?next=/recipes/new; keep the tab

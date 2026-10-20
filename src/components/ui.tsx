@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { BackIcon, ChevronIcon, Sprig } from "@/components/icons";
 import { Snapshot } from "@/components/snapshot";
 import type { FamilyMember, Gathering, Recipe } from "@/lib/types";
+import { pen } from "@/lib/pen";
 
 export function formatDate(iso: string, opts: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", year: "numeric" }) {
   // Dates are plain calendar days; parse as UTC so they never shift a day.
@@ -68,7 +69,7 @@ export function Byline({ member, prefix = "From" }: { member: FamilyMember | nul
   if (!member) return null;
   return (
     <span className="italic text-ink-soft">
-      {prefix} <span className={`hand not-italic text-[1.3em] ink-${member.ink}`}>{member.name}</span>
+      {prefix} <span {...pen(member, "not-italic text-[1.3em]")}>{member.name}</span>
     </span>
   );
 }
@@ -84,7 +85,6 @@ const DECK_INGREDIENTS = 5;
  * Every row is 1.75rem tall so text sits on the printed lines.
  */
 export function DeckCard({ recipe, index }: { recipe: Recipe; index: number }) {
-  const ink = recipe.contributor?.ink ?? "sepia";
   const shown = recipe.ingredients.slice(0, DECK_INGREDIENTS);
   const more = recipe.ingredients.length - shown.length;
   const clearPhoto = recipe.contributor ? "pr-16" : "";
@@ -105,7 +105,7 @@ export function DeckCard({ recipe, index }: { recipe: Recipe; index: number }) {
         <Byline member={recipe.contributor} />
       </p>
       {recipe.description && <p className="line-clamp-2 text-[0.92rem] leading-7 text-ink-soft">{recipe.description}</p>}
-      <ul className={`hand mt-7 text-[1.3rem] leading-7 ink-${ink}`}>
+      <ul {...pen(recipe.contributor, "mt-7 text-[1.3rem] leading-7")}>
         {shown.map((item, i) => (
           <li key={i} className="truncate">
             {item}

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/safe-next";
-import { INKS, type Ink } from "@/lib/types";
+import { diffLine } from "@/lib/libreta";
+import { isHand, parseInk } from "@/lib/pen";
 
 export type FormState = { error?: string; ok?: string } | undefined;
 
@@ -28,9 +29,24 @@ async function requireUser(supabase: Supabase) {
 
 function friendly(error: { message: string; code?: string }) {
   if (error.code === "23505") return "That dish is already on the menu.";
-  if (error.code === "42501") return "You can only change your own cookbook.";
+  // The database's own guards (claimed profiles, invite links) explain themselves;
+  // a bare RLS refusal doesn't.
+  if (error.code === "42501")
+    return /row-level security|permission denied/.test(error.message) ? "You can only change your own cookbook." : error.message;
   if (error.code === "23514") return "One of the fields is too long or empty.";
   return error.message;
+}
+
+/**
+ * A pen from a form: `<prefix>ink` is a named ink or "custom", in which case the
+ * color is `<prefix>ink_custom` (darkened if too pale to read); `<prefix>hand`
+ * is the handwriting. Missing or unknown values fall back to the defaults.
+ */
+function penFrom(fd: FormData, prefix: string) {
+  const choice = text(fd, `${prefix}ink`);
+  const ink = parseInk(choice === "custom" ? text(fd, `${prefix}ink_custom`) : choice);
+  const hand = text(fd, `${prefix}hand`);
+  return { ink, hand: isHand(hand) ? hand : "caveat" };
 }
 
 /**
@@ -42,9 +58,12 @@ async function resolvePerson(supabase: Supabase, fd: FormData, field: string): P
   if (choice !== "__new") return { id: choice || null };
   const name = text(fd, `${field}_name`);
   if (!name) return { error: "Write the new person's name." };
-  const inkRaw = text(fd, `${field}_ink`);
-  const ink: Ink = (INKS as readonly string[]).includes(inkRaw) ? (inkRaw as Ink) : "sepia";
-  const { data, error } = await supabase.from("family_members").insert({ name, ink }).select("id").single();
+  const { ink, hand } = penFrom(fd, `${field}_`);
+  const { data, error } = await supabase
+    .from("family_members")
+    .insert({ name, ink: ink ?? "sepia", hand })
+    .select("id")
+    .single();
   if (error) return { error: friendly(error) };
   return { id: data.id };
 }
@@ -73,11 +92,11 @@ export async function signUp(_: FormState, fd: FormData): Promise<FormState> {
   redirect(safeNextPath(text(fd, "next")));
 }
 
-export async function signOut() {
+export async function signOut(fd?: FormData) {
   const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect(safeNextPath(fd ? text(fd, "next") : "/"));
 }
 
 export async function copySampleCookbook(): Promise<FormState> {
@@ -155,6 +174,49 @@ export async function addAnnotation(_: FormState, fd: FormData): Promise<FormSta
   if (error) return { error: friendly(error) };
   revalidatePath(`/recipes/${recipeId}`);
   return { ok: "Note added." };
+}
+
+/**
+ * Write on one line of a recipe: rewrite it (the changed words are crossed out
+ * and the new ones written beside them), add a note next to it, or both.
+ * The recipe itself is never changed.
+ */
+export async function addLineNote(_: FormState, fd: FormData): Promise<FormState> {
+  const supabase = await createClient();
+  await requireUser(supabase);
+  const recipeId = text(fd, "recipe_id");
+  const kind = text(fd, "line_kind");
+  const line = String(fd.get("line_text") ?? "");
+  const rewrite = text(fd, "rewrite").replace(/\s+/g, " ");
+  const body = text(fd, "body");
+  if (kind !== "ingredient" && kind !== "step") return { error: "That line isn't in the recipe." };
+
+  const { data: recipe } = await supabase.from("recipes").select("ingredients, instructions").eq("id", recipeId).maybeSingle();
+  const lines: string[] = kind === "ingredient" ? (recipe?.ingredients ?? []) : (recipe?.instructions ?? []);
+  if (!lines.includes(line)) return { error: "That line has changed since the page loaded. Reload and try again." };
+
+  const change = rewrite ? diffLine(line, rewrite) : null;
+  if (!change && !body) return { error: "Change a word, or write a note beside it." };
+  if (body.length > 600) return { error: "Keep notes under 600 characters." };
+  if (change && change.replacement.length > 300) return { error: "That's a lot to squeeze in. Put the longer part in the note." };
+
+  const person = await resolvePerson(supabase, fd, "author");
+  if ("error" in person) return person;
+  if (!person.id) return { error: "Choose who is writing this." };
+
+  const { error } = await supabase.from("annotations").insert({
+    recipe_id: recipeId,
+    author_id: person.id,
+    body,
+    line_kind: kind,
+    line_text: line,
+    strike_start: change?.start ?? null,
+    strike_end: change?.end ?? null,
+    replacement: change ? change.replacement : null,
+  });
+  if (error) return { error: friendly(error) };
+  revalidatePath(`/recipes/${recipeId}`);
+  return { ok: "Written in." };
 }
 
 export async function deleteAnnotation(fd: FormData) {
@@ -237,20 +299,89 @@ export async function addFamilyMember(_: FormState, fd: FormData): Promise<FormS
   const supabase = await createClient();
   await requireUser(supabase);
   const name = text(fd, "name");
-  const ink = text(fd, "ink");
+  const { ink, hand } = penFrom(fd, "");
   if (!name) return { error: "Write their name." };
-  if (!(INKS as readonly string[]).includes(ink)) return { error: "Choose an ink color." };
-  const { error } = await supabase.from("family_members").insert({ name, ink, relation: text(fd, "relation") || null });
+  if (!ink) return { error: "Choose an ink color." };
+  const { error } = await supabase.from("family_members").insert({ name, ink, hand, relation: text(fd, "relation") || null });
   if (error) return { error: friendly(error) };
   revalidatePath("/", "layout");
   return { ok: `${name} added.` };
 }
 
-export async function setMemberInk(fd: FormData) {
+export async function updateFamilyMember(_: FormState, fd: FormData): Promise<FormState> {
   const supabase = await createClient();
   await requireUser(supabase);
-  const ink = text(fd, "ink");
-  if (!(INKS as readonly string[]).includes(ink)) return;
-  await supabase.from("family_members").update({ ink }).eq("id", text(fd, "id"));
+  const name = text(fd, "name");
+  const { ink, hand } = penFrom(fd, "");
+  if (!name) return { error: "Write their name." };
+  if (!ink) return { error: "Choose an ink color." };
+  const { data, error } = await supabase
+    .from("family_members")
+    .update({ name, ink, hand, relation: text(fd, "relation") || null })
+    .eq("id", text(fd, "id"))
+    .select("id");
+  if (error) return { error: friendly(error) };
+  // RLS skips (rather than refuses) a profile someone else has claimed.
+  if (!data?.length) return { error: "Only they can change their own pen, now that they've joined." };
   revalidatePath("/", "layout");
+  return { ok: "Saved." };
+}
+
+// Sharing --------------------------------------------------------------------
+
+export async function renameCookbook(_: FormState, fd: FormData): Promise<FormState> {
+  const supabase = await createClient();
+  await requireUser(supabase);
+  const name = text(fd, "name");
+  if (!name) return { error: "Give the cookbook a name." };
+  if (name.length > 80) return { error: "Keep the name under 80 characters." };
+  const { data, error } = await supabase.from("cookbooks").update({ name }).eq("id", text(fd, "id")).select("id");
+  if (error) return { error: friendly(error) };
+  if (!data?.length) return { error: "Only the person who started the cookbook can rename it." };
+  revalidatePath("/", "layout");
+  return { ok: "Renamed." };
+}
+
+/** The owner makes the family's invite link (or gets the one still open). */
+export async function createInvite() {
+  const supabase = await createClient();
+  await requireUser(supabase);
+  await supabase.rpc("create_invite");
+  revalidatePath("/account");
+}
+
+/** The owner turns the link off. Whoever already joined stays. */
+export async function revokeInvite() {
+  const supabase = await createClient();
+  await requireUser(supabase);
+  await supabase.rpc("revoke_invite");
+  revalidatePath("/account");
+}
+
+/**
+ * Join through an invite link as one of the people already in the book
+ * (`member` = their id) or as someone new (`member` = "__new"), with the name,
+ * ink and hand the joiner chose.
+ */
+export async function acceptInvite(_: FormState, fd: FormData): Promise<FormState> {
+  const supabase = await createClient();
+  await requireUser(supabase);
+  const token = text(fd, "token");
+  const member = text(fd, "member");
+  const name = text(fd, "name");
+  const { ink, hand } = penFrom(fd, "");
+  if (!member) return { error: "Choose which one you are, or add yourself." };
+  if (!name) return { error: "Write your name." };
+  if (!ink) return { error: "Choose an ink color." };
+  const { error } = await supabase.rpc("accept_invite", {
+    p_token: token,
+    p_member: member === "__new" ? null : member,
+    p_name: name,
+    p_relation: text(fd, "relation"),
+    p_ink: ink,
+    p_hand: hand,
+  });
+  if (error) return { error: friendly(error) };
+  revalidatePath("/", "layout");
+  redirect("/?joined=1");
 }

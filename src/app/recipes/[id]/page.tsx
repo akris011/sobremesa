@@ -7,6 +7,11 @@ import { AnnotationForm } from "@/components/annotation-form";
 import { deleteAnnotation } from "@/app/actions";
 import { CloseIcon } from "@/components/icons";
 import { Snapshot } from "@/components/snapshot";
+import { MarginNote, WrittenLine } from "@/components/libreta";
+import { LineEditor } from "@/components/line-editor";
+import { isCorrection, placeNotes } from "@/lib/libreta";
+import { pen } from "@/lib/pen";
+import type { Annotation } from "@/lib/types";
 
 export async function generateMetadata({ params }: PageProps<"/recipes/[id]">): Promise<Metadata> {
   const data = await getRecipe((await params).id);
@@ -20,6 +25,25 @@ export default async function RecipePage({ params, searchParams }: PageProps<"/r
   if (!data) notFound();
   const { recipe, annotations, history, canEdit } = data;
   const family = canEdit ? await listFamily() : [];
+  const { ingredientNotes, stepNotes, margin } = placeNotes(annotations, recipe.ingredients, recipe.instructions);
+  const rewritten = [...ingredientNotes, ...stepNotes].some((notes) => notes.some(isCorrection));
+
+  // Each line is written on in place; for the owner it also opens an editor.
+  const line = (kind: "ingredient" | "step", text: string, notes: Annotation[]) => {
+    const written = <WrittenLine text={text} notes={notes} />;
+    if (!canEdit) return <span className="min-w-0 flex-1">{written}</span>;
+    return (
+      <LineEditor
+        recipeId={recipe.id}
+        kind={kind}
+        line={text}
+        family={family}
+        notes={notes.filter((n) => n.removable).map((n) => ({ id: n.id, author: n.author?.name ?? "Someone" }))}
+      >
+        {written}
+      </LineEditor>
+    );
+  };
 
   return (
     <main className="rise">
@@ -40,7 +64,7 @@ export default async function RecipePage({ params, searchParams }: PageProps<"/r
         </p>
       )}
 
-      <article>
+      <article className="libreta">
         <header className="index-card index-card-lined relative mt-4 -rotate-[0.4deg] px-5 pb-6">
           <div className="flex h-[2.6rem] items-center">
             {recipe.servings && <span className="text-[0.9rem] text-ink-faint italic">Serves {recipe.servings}</span>}
@@ -68,13 +92,25 @@ export default async function RecipePage({ params, searchParams }: PageProps<"/r
           </section>
         )}
 
+        {(rewritten || canEdit) && (
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[0.88rem] text-ink-soft">
+            {canEdit && <p className="italic">Tap a line to cross something out or write beside it.</p>}
+            {rewritten && (
+              <label className="flex cursor-pointer items-center gap-2">
+                <input type="checkbox" className="show-original h-4 w-4 accent-burgundy" />
+                Show it as first written
+              </label>
+            )}
+          </div>
+        )}
+
         <section className="mt-8">
           <SectionHeading>Ingredients</SectionHeading>
           <ul className="space-y-0">
             {recipe.ingredients.map((item, i) => (
               <li key={i} className="flex gap-3 border-b border-dotted border-rule py-2 leading-6">
                 <span className="mt-[0.6rem] h-1 w-1 shrink-0 rotate-45 bg-terracotta" aria-hidden />
-                {item}
+                {line("ingredient", item, ingredientNotes[i])}
               </li>
             ))}
           </ul>
@@ -86,7 +122,7 @@ export default async function RecipePage({ params, searchParams }: PageProps<"/r
             {recipe.instructions.map((step, i) => (
               <li key={i} className="flex gap-4 leading-7">
                 <span className="w-6 shrink-0 text-right font-display text-[1.5rem] leading-7 font-semibold text-burgundy">{i + 1}</span>
-                <span>{step}</span>
+                {line("step", step, stepNotes[i])}
               </li>
             ))}
           </ol>
@@ -96,22 +132,21 @@ export default async function RecipePage({ params, searchParams }: PageProps<"/r
           <SectionHeading>
             <span id="margins">In the margins</span>
           </SectionHeading>
-          {annotations.length === 0 ? (
+          {margin.length === 0 ? (
             <p className="text-[0.95rem] text-ink-soft italic">
-              No notes yet. When someone changes this recipe, their twist goes here, and the original stays as written.
+              {annotations.length === 0
+                ? "No notes yet. When someone changes this recipe, their twist goes on the line it changes, or here, and the original stays as written."
+                : "Nothing else in the margins."}
             </p>
           ) : (
             <ul className="index-card index-card-lined space-y-1 px-5 pt-12 pb-4">
-              {annotations.map((a, i) => (
+              {margin.map((a, i) => (
                 <li
                   key={a.id}
                   className={`group relative py-1 ${i % 2 ? "rotate-[0.6deg] pl-6" : "-rotate-[0.5deg]"}`}
                 >
-                  <p className={`hand text-[1.45rem] leading-[1.75rem] ink-${a.author?.ink ?? "sepia"}`}>{a.body}</p>
-                  <p className={`hand text-[1.1rem] leading-[1.75rem] opacity-80 ink-${a.author?.ink ?? "sepia"}`}>
-                    — {a.author?.name ?? "Someone"}, {formatDate(a.created_at, { month: "short", year: "numeric" })}
-                  </p>
-                  {canEdit && (
+                  <MarginNote note={a} />
+                  {canEdit && a.removable && (
                     <form action={deleteAnnotation} className="absolute top-1 -right-3">
                       <input type="hidden" name="id" value={a.id} />
                       <input type="hidden" name="recipe_id" value={recipe.id} />
@@ -156,7 +191,7 @@ export default async function RecipePage({ params, searchParams }: PageProps<"/r
                   <p className="text-[0.92rem] text-ink-soft">
                     {h.preparer ? (
                       <>
-                        Made by <span className={`hand text-[1.25rem] ink-${h.preparer.ink}`}>{h.preparer.name}</span>
+                        Made by <span {...pen(h.preparer, "text-[1.25rem]")}>{h.preparer.name}</span>
                       </>
                     ) : (
                       "Nobody has claimed it yet"

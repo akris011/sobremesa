@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { addMenuItem, setPreparer, type FormState } from "@/app/actions";
-import { ActionForm, Field, InkPicker, PersonPicker, Submit } from "@/components/form-bits";
+import { ActionForm, Field, PenFields, PersonPicker, Submit } from "@/components/form-bits";
 import { ErrorNote } from "@/components/ui";
-import type { FamilyMember, Ink, MenuItem, Recipe } from "@/lib/types";
+import { freshInk, pen } from "@/lib/pen";
+import type { FamilyMember, MenuItem, Recipe } from "@/lib/types";
 
 export function AddDishForm({
   gatheringId,
@@ -63,7 +64,7 @@ export function AddDishForm({
           ))}
         </select>
       </Field>
-      <PersonPicker name="preparer" label="Who's making it?" family={family} allowNone noneLabel="Nobody yet" />
+      <PersonPicker name="preparer" label="Who's making it?" family={family} allowNone noneLabel="Nobody yet" anyone />
       <Field label="Note" hint="Optional">
         <input name="note" maxLength={280} placeholder="Double batch, bring the big pot" className="field" />
       </Field>
@@ -85,8 +86,11 @@ export function PreparerForm({ item, family }: { item: MenuItem; family: FamilyM
   const [state, action, pending] = useActionState<FormState, FormData>(setPreparer, undefined);
   const initial = item.preparer?.id ?? "";
   const [choice, setChoice] = useState(initial);
-  const [ink, setInk] = useState<Ink>("olive");
-  const chosen = family.find((m) => m.id === choice);
+  // Anyone can be down to bring a dish; it isn't signing in their name.
+  const people = family;
+  const chosen = people.find((m) => m.id === choice);
+  const underline =
+    "min-w-0 flex-1 appearance-none border-b border-dashed border-rule bg-transparent py-0.5 text-[1.35rem] focus:border-burgundy focus:outline-none";
   const dirty = choice !== initial;
 
   return (
@@ -99,10 +103,10 @@ export function PreparerForm({ item, family }: { item: MenuItem; family: FamilyM
           value={choice}
           onChange={(e) => setChoice(e.target.value)}
           aria-label={`Who's bringing ${item.recipe?.title}`}
-          className={`hand min-w-0 flex-1 appearance-none border-b border-dashed border-rule bg-transparent py-0.5 text-[1.35rem] focus:border-burgundy focus:outline-none ${chosen ? `ink-${chosen.ink}` : "text-ink-faint"}`}
+          {...(chosen ? pen(chosen, underline) : { className: `hand ${underline} text-ink-faint` })}
         >
           <option value="">nobody yet</option>
-          {family.map((m) => (
+          {people.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
             </option>
@@ -111,9 +115,8 @@ export function PreparerForm({ item, family }: { item: MenuItem; family: FamilyM
         </select>
       </label>
       {choice === "__new" && (
-        <div className="mt-2 space-y-2">
-          <input name="preparer_name" required placeholder="Their name" className="field" />
-          <InkPicker name="preparer_ink" value={ink} onChange={setInk} />
+        <div className="mt-3">
+          <PenFields nameField="preparer_name" prefix="preparer_" defaultInk={freshInk(family)} autoFocus />
         </div>
       )}
       {dirty && (
