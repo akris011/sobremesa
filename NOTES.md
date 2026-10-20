@@ -1,7 +1,7 @@
 # NOTES
 
 Session handoff. Read this first; update it before ending a session.
-Last updated: 2026-10-19, session 4 (La Libreta: line edits + pens). Deadline: Mon 2026-10-19, 11:59 pm (submission form in `technify-training-swe.pdf` §10.4).
+Last updated: 2026-10-19, session 5 (family invites; migration NOT pushed). Deadline: Mon 2026-10-19, 11:59 pm (submission form in `technify-training-swe.pdf` §10.4).
 
 ## Where things stand
 
@@ -11,6 +11,45 @@ Last updated: 2026-10-19, session 4 (La Libreta: line edits + pens). Deadline: M
 - **Live at https://sobremesa-taupe.vercel.app.** Production deploys are Anya's call (`npx vercel deploy --prod --yes`); the agent runs one only when she asks in that session.
 - **2026-10-19:** production runs the import + graphics code (deployed from `feature/recipe-import` at `515189a`, before the merge). PR #3 (graphics) and PR #2 (import) are now merged to `main` (`075ea01`), and `main`'s `src`/`tests` match what's live. `BASE_URL=https://sobremesa-taupe.vercel.app npm run test:e2e`: 24/24, no console errors. Roll back with `npx vercel rollback` if needed.
 - Local secrets: `.env.local` (Supabase URL, publishable key, and a `VERCEL_OIDC_TOKEN` added by `vercel link`), `.env.supabase.local` (DB password). Both gitignored.
+
+## Session 5: family invites (branch `feature/invites`, worktree `../sobremesa-invites`)
+
+**Status 2026-10-19 (late):** migration applied to the live project (Anya ran `supabase db push`); then `test:rls` 53/53 and `test:e2e` 31/31 (two-phone join included) against it, no console errors. Anya decided: anyone can set who's bringing a dish, even a joined person; account deletion stays as is. Branch pushed, PR #6 open (not merged), and **deployed to production** from `feature/invites` (`sobremesa-taupe.vercel.app` now runs it, ahead of `main`). Next: merge PR #6 so `main` matches production; try the invite on real phones (share sheet, join, claim).
+
+Built from `docs/tasks/family-invites.md` and its "Decided with Anya" section, on top of `main` after libreta and tab-latency merged (`e4dcb20`). **The migration is not pushed, nothing is deployed, nothing is pushed to GitHub.**
+
+What changed:
+- Migration `20261019120000_shared_cookbooks.sql` (additive): `cookbooks`, `cookbook_members` (owner/member, unique user_id = one cookbook per account), `cookbook_invites` (token = two v4 UUIDs, 244 random bits from `gen_random_uuid`, so it doesn't depend on where pgcrypto lives; 14 days; `revoked_at`). `cookbook_id` on all five tables, default `my_cookbook_id()`; `family_members.user_id`. Backfill: one cookbook per auth user named "<first person>'s family cookbook", owner membership, every row moved in, and each account's first family member (the one the signup trigger made) linked to it. `updated_at` is not bumped.
+- RLS: the old `read demo or own` / `write own` policies are **dropped and replaced** (policies are OR'ed; keeping `write own` would let a member edit a person after someone else claimed them, or write rows into a cookbook they aren't in). New ones: read `is_demo or is_cookbook_member`; writes need membership and same-cookbook foreign keys (`member_in`, `recipe_in`, `gathering_in`). Claimed profiles: inserts check `claimed_by_other()` in RLS; changing a signer is checked by trigger `guard_shared_row` (which also freezes `cookbook_id`/`owner_id` on update); `guard_family_member` stops anyone linking a profile except `accept_invite` and the signup trigger. Both triggers act only for API roles (`authenticated`/`anon`). Cookbooks: only `name` is updatable, owner only. Memberships/invites: read by members, written only by RPCs.
+- RPCs (security definer, `search_path = ''`): `invite_preview(token)` (anon ok; people listed only to a signed-in caller), `accept_invite(token, member, name, relation, ink, hand)`, `create_invite()` and `revoke_invite()` (owner only). `handle_new_user` now makes a cookbook + owner membership + linked profile. `copy_sample_cookbook()` copies into `my_cookbook_id()`.
+- App: `data.ts` scopes by `cookbook_id` (cached `myCookbook()` per request) and turns `user_id` into `claimed`/`mine` flags so account ids don't reach the browser. Family page: cookbook name (owner renames), Invite family (`navigator.share`, Copy link fallback, `data-invite-url`), who has joined, Turn off this link. Invite URL is built from the request host. `/join/[token]`: unknown / turned off / expired notices; greeting + `AuthForm joining`; "Which one are you?" with `PenFields`; "already has a cookbook" notice with sign-out. Pickers offer only unclaimed people and you (`signable()`), defaulting to you. Claimed pens show "joined" and no Change for others; their notes have no remove button for others. Home header shows the cookbook name.
+- Tests: new `npm run test:db` (PGlite, offline). `test:rls` + 28 checks for sharing. `test:e2e` Part 3: two phones, owner invites, guest joins as Tía Carmen, note in her ink, owner can't remove or sign it, turned-off link.
+
+Verified (no database involved):
+- `npm run test:db`: 93/93. Applies all four migrations to PGlite with a stub `auth` schema and Supabase-like roles/default grants, builds data with main's owner_id-style writes *before* the new migration, then checks main's queries/inserts/updates/copy still work *after* it, plus every sharing rule above (expired links included, which the API can't set up).
+- `tsc`, lint, `npm run build` clean; `test:import` 16/16. Signed-out pages (/, /account, /gatherings, /login, /join/<bad token>) return 200 on a production build against the live DB (read-only, same queries visitors make today).
+- `supabase db push --dry-run`: only `20261019120000_shared_cookbooks.sql` pending.
+
+NOT verified (needs the migration on a database with the real Supabase stack):
+- `test:rls` (old 24 + new sharing checks) and `test:e2e` (old 26 + join flow). Nothing signed in has run against the new code.
+- PGlite is not Supabase: the real `auth.uid()`, PostgREST's role switching, `postgres` not being superuser, and Supabase's default grants are stubbed. Riskiest spots if it differs: the signup trigger (`handle_new_user`; a failure there blocks every signup), the `current_user` check in the guard triggers, and `revoke … from anon` on the RPCs.
+- The share sheet on a real iPhone (iOS Safari needs the tap to call `navigator.share` directly; the link is made by a separate earlier tap for that reason).
+
+Open question: staging or live push. The migration runs in one transaction (a failure leaves the DB unchanged) and main keeps working after it per `test:db`. But if a Supabase-specific difference slips through, it shows up in production right away, and undoing it means writing a new migration. Recommended: create a free second Supabase project as staging (~20 min: create, `supabase link --project-ref <staging>`, `supabase db push`, point a local `.env.local` copy at it, run `test:rls` and `test:e2e` against a production build), then push to live and deploy. If there's no time: push to live, then immediately run main's `BASE_URL=https://sobremesa-taupe.vercel.app npm run test:e2e` and `test:rls` from `main` (signup, notes, copy) before deploying this branch.
+
+Decisions to confirm with Anya:
+1. Only the owner makes or turns off the link and renames the cookbook; any member can share the open link.
+2. A note signed by someone who joined can be removed only by them (the brief only said "sign as").
+3. Following the binding rule literally, nobody else can set a joined person as a dish's preparer ("Carmen is bringing the flan" has to be set by Carmen). Loosen to preparer-excepted if planning feels awkward.
+4. Signed-out visitors with the link see the cookbook and inviter names only; the list of people appears after sign-in.
+5. An account whose cookbook has any recipe, gathering or extra person can't join (the brief's MVP rule). Alternative later: a cookbook switcher (drop `unique(user_id)` on `cookbook_members`, pick a current cookbook per session).
+6. Not built: the owner removing a member; leaving a cookbook.
+7. Existing: `owner_id … on delete cascade` means deleting an account deletes everything it wrote, now including rows in a shared cookbook. Fix after deploy (make it `set null` and relax the demo check).
+
+Next steps:
+1. Decide staging vs. live; push the migration; run `test:db`, `test:rls`, `test:e2e` (production build, own port, e.g. `npx next start -p 3004` + `BASE_URL=http://localhost:3004`).
+2. Open the PR from `feature/invites` to `main` (ask first), merge, deploy when Anya asks.
+3. Try the share sheet and the join flow on an iPhone.
 
 ## Session 4: tab latency (branch `fix/tab-latency`, not merged or deployed)
 
@@ -102,7 +141,7 @@ Not done / open:
 ## Next tasks (parallel sessions)
 
 Briefs live in `docs/tasks/`. Each session reads this file, then its brief.
-- `docs/tasks/family-invites.md`: shared cookbooks plus a join link. Rewrites RLS; owns all migrations while it runs.
+- `docs/tasks/family-invites.md`: built on `feature/invites` (session 5); migration not pushed yet. Owns all migrations while it runs.
 - `docs/tasks/recipe-import.md`: phase 1 built and merged (PR #2, free, no API key). Still to try on a phone: a photographed printed page and a handwritten card.
 
 Rules for running them side by side:

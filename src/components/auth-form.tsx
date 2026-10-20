@@ -6,7 +6,8 @@ import { signIn, signUp, type FormState } from "@/app/actions";
 import { ActionForm, Field, Submit } from "@/components/form-bits";
 import { ErrorNote } from "@/components/ui";
 
-export function AuthForm({ next }: { next: string }) {
+/** Sign up or sign in. `joining` words it for someone arriving from an invite link. */
+export function AuthForm({ next, joining = false }: { next: string; joining?: boolean }) {
   const [mode, setMode] = useState<"in" | "up">("up");
   const [inState, inAction, inPending] = useActionState<FormState, FormData>(signIn, undefined);
   const [upState, upAction, upPending] = useActionState<FormState, FormData>(signUp, undefined);
@@ -25,7 +26,7 @@ export function AuthForm({ next }: { next: string }) {
               mode === m ? "border-burgundy text-ink" : "border-transparent text-ink-faint"
             }`}
           >
-            {m === "up" ? "Start a cookbook" : "Sign in"}
+            {m === "up" ? (joining ? "I'm new here" : "Start a cookbook") : "Sign in"}
           </button>
         ))}
       </div>
@@ -52,17 +53,19 @@ export function AuthForm({ next }: { next: string }) {
         </Field>
         {state?.error && <ErrorNote>{state.error}</ErrorNote>}
         {state?.ok && <p role="status" className="text-[0.92rem] text-olive">{state.ok}</p>}
-        <Submit pending={mode === "in" ? "Signing in…" : "Opening your cookbook…"}>
-          {mode === "in" ? "Sign in" : "Create my cookbook"}
+        <Submit pending={mode === "in" ? "Signing in…" : joining ? "Making your account…" : "Opening your cookbook…"}>
+          {mode === "in" ? "Sign in" : joining ? "Make my account" : "Create my cookbook"}
         </Submit>
       </ActionForm>
 
-      <p className="mt-6 text-center text-[0.9rem] text-ink-soft">
-        Just looking?{" "}
-        <Link href="/" className="link">
-          Read the sample cookbook
-        </Link>
-      </p>
+      {!joining && (
+        <p className="mt-6 text-center text-[0.9rem] text-ink-soft">
+          Just looking?{" "}
+          <Link href="/" className="link">
+            Read the sample cookbook
+          </Link>
+        </p>
+      )}
     </>
   );
 }

@@ -76,4 +76,76 @@ expect("copy keeps the crossed-out line edits", lineEdits === 5, `got ${lineEdit
 const { data: hands } = await c.from("family_members").select("hand").eq("owner_id", user.id).neq("hand", "caveat");
 expect("copy keeps each member's handwriting", hands?.length === 4, `got ${hands?.length}`);
 
+// Shared cookbooks and the join link (migration 20261019120000_shared_cookbooks).
+// An expired link can't be made through the API (nobody can backdate one), so
+// expiry is checked offline in `npm run test:db`, along with everything below.
+const owner = await signUp("rls-owner", "Rosa");
+const ownerCb = (await owner.from("cookbook_members").select("cookbook_id, role").single()).data;
+expect("a new account owns its own cookbook", ownerCb?.role === "owner");
+const abuela = (await owner.from("family_members").insert({ name: "Abuela", ink: "olive" }).select("id").single()).data.id;
+const flan = (await owner.from("recipes").insert({ title: "Flan", ingredients: ["eggs"], instructions: ["bake"] }).select("id").single()).data.id;
+const party = (await owner.from("gatherings").insert({ name: "Nochebuena", held_on: "2026-12-24" }).select("id").single()).data.id;
+const { data: token } = await owner.rpc("create_invite");
+expect("the owner makes a link with at least 128 bits", /^[0-9a-f]{32,}$/.test(token ?? ""), token);
+const again = await owner.rpc("create_invite");
+expect("asking again gives the same open link", again.data === token);
+
+const anonPreview = (await anon.rpc("invite_preview", { p_token: token })).data;
+expect("a visitor's preview names the cookbook and inviter, not the people", anonPreview?.status === "open" && anonPreview.inviter === "Rosa" && !anonPreview.people, JSON.stringify(anonPreview));
+const anonJoin = await anon.rpc("accept_invite", { p_token: token });
+expect("a visitor can't accept", !!anonJoin.error);
+expect("a made-up token is unknown", (await anon.rpc("invite_preview", { p_token: "0".repeat(64) })).data?.status === "unknown");
+
+const guest = await signUp("rls-guest", "Carmen");
+const guestPreview = (await guest.rpc("invite_preview", { p_token: token })).data;
+expect("a signed-in preview lists who can be claimed", guestPreview?.people?.some((p) => p.id === abuela) && guestPreview.blocked === false, JSON.stringify(guestPreview));
+const joined = await guest.rpc("accept_invite", { p_token: token, p_member: abuela, p_name: "Abuela Rosa", p_ink: "plum", p_hand: "reenie" });
+expect("joining as Abuela works", joined.data === ownerCb.cookbook_id, joined.error?.message);
+const guestRead = await guest.from("recipes").select("id").eq("id", flan);
+expect("a member reads the shared cookbook", guestRead.data?.length === 1);
+const guestRecipe = await guest.from("recipes").insert({ title: "Carmen's cake", ingredients: ["flour"], instructions: ["bake"], contributor_id: abuela }).select("id, cookbook_id").single();
+expect("a member writes into the shared cookbook", guestRecipe.data?.cookbook_id === ownerCb.cookbook_id, guestRecipe.error?.message);
+const ownerSees = await owner.from("recipes").select("id").eq("id", guestRecipe.data?.id);
+expect("the owner sees the member's recipe", ownerSees.data?.length === 1);
+const guestNote = await guest.from("annotations").insert({ recipe_id: flan, author_id: abuela, body: "Less sugar." }).select("id").single();
+expect("a member signs a note as their own profile", !guestNote.error, guestNote.error?.message);
+const g1 = await guest.from("menu_items").insert({ gathering_id: party, recipe_id: flan, preparer_id: abuela });
+expect("a member puts a dish on the shared menu", !g1.error, g1.error?.message);
+
+const o1 = await owner.from("family_members").update({ name: "hacked" }).eq("id", abuela).select();
+expect("the owner can't change a claimed profile", !o1.data?.length, JSON.stringify(o1.error ?? o1.data));
+const o2 = await owner.from("annotations").insert({ recipe_id: flan, author_id: abuela, body: "forged" });
+expect("the owner can't sign a note as a claimed profile", !!o2.error, o2.error?.code);
+const oDish = await owner.from("menu_items").update({ preparer_id: abuela }).eq("gathering_id", party).eq("recipe_id", flan).select();
+expect("the owner can say a joined person is bringing a dish", oDish.data?.length === 1, JSON.stringify(oDish.error ?? oDish.data));
+const o3 = await owner.from("recipes").insert({ title: "forged", contributor_id: abuela });
+expect("the owner can't sign a recipe as a claimed profile", !!o3.error, o3.error?.code);
+const o4 = await owner.from("annotations").delete().eq("id", guestNote.data?.id).select();
+expect("the owner can't remove a claimed profile's note", !o4.data?.length);
+const o5 = await owner.from("recipes").update({ title: "Carmen's cake (lemon)" }).eq("id", guestRecipe.data?.id).select();
+expect("the owner can still edit a recipe the member contributed", o5.data?.length === 1, o5.error?.message);
+const o6 = await owner.from("family_members").insert({ name: "Me again", user_id: (await owner.auth.getUser()).data.user.id });
+expect("nobody links a profile to an account directly", !!o6.error, o6.error?.code);
+
+const n1 = await b.from("recipes").select("id").eq("id", flan);
+expect("a non-member still can't read the shared cookbook", n1.data?.length === 0);
+const n2 = await b.from("recipes").insert({ title: "inject", cookbook_id: ownerCb.cookbook_id });
+expect("a non-member can't write into it by naming it", !!n2.error, n2.error?.code);
+const n3 = await b.rpc("accept_invite", { p_token: token, p_name: "Intruder" });
+expect("an account with its own recipes can't join (one cookbook each)", /already have a cookbook/.test(n3.error?.message ?? ""), n3.error?.message);
+const m1 = await guest.from("menu_items").insert({ gathering_id: party, recipe_id: rec.data.id });
+expect("a member can't attach a recipe from another cookbook", !!m1.error, m1.error?.code);
+const m2 = await guest.rpc("create_invite");
+expect("a member who isn't the owner can't make links", !!m2.error);
+const m3 = await guest.rpc("revoke_invite");
+expect("…or turn the link off", !!m3.error);
+
+await owner.rpc("revoke_invite");
+const late = await signUp("rls-late", "Late");
+const lateJoin = await late.rpc("accept_invite", { p_token: token, p_name: "Late" });
+expect("a turned-off link is refused", /turned off/.test(lateJoin.error?.message ?? ""), lateJoin.error?.message);
+expect("its preview says so", (await anon.rpc("invite_preview", { p_token: token })).data?.status === "revoked");
+const stillIn = await guest.from("recipes").select("id").eq("id", flan);
+expect("people who joined stay after the link is turned off", stillIn.data?.length === 1);
+
 done();

@@ -38,7 +38,7 @@ export default async function RecipePage({ params, searchParams }: PageProps<"/r
         kind={kind}
         line={text}
         family={family}
-        notes={notes.map((n) => ({ id: n.id, author: n.author?.name ?? "Someone" }))}
+        notes={notes.filter((n) => n.removable).map((n) => ({ id: n.id, author: n.author?.name ?? "Someone" }))}
       >
         {written}
       </LineEditor>
@@ -146,7 +146,7 @@ export default async function RecipePage({ params, searchParams }: PageProps<"/r
                   className={`group relative py-1 ${i % 2 ? "rotate-[0.6deg] pl-6" : "-rotate-[0.5deg]"}`}
                 >
                   <MarginNote note={a} />
-                  {canEdit && (
+                  {canEdit && a.removable && (
                     <form action={deleteAnnotation} className="absolute top-1 -right-3">
                       <input type="hidden" name="id" value={a.id} />
                       <input type="hidden" name="recipe_id" value={recipe.id} />

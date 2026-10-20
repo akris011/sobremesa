@@ -64,7 +64,7 @@ export function AddDishForm({
           ))}
         </select>
       </Field>
-      <PersonPicker name="preparer" label="Who's making it?" family={family} allowNone noneLabel="Nobody yet" />
+      <PersonPicker name="preparer" label="Who's making it?" family={family} allowNone noneLabel="Nobody yet" anyone />
       <Field label="Note" hint="Optional">
         <input name="note" maxLength={280} placeholder="Double batch, bring the big pot" className="field" />
       </Field>
@@ -86,7 +86,9 @@ export function PreparerForm({ item, family }: { item: MenuItem; family: FamilyM
   const [state, action, pending] = useActionState<FormState, FormData>(setPreparer, undefined);
   const initial = item.preparer?.id ?? "";
   const [choice, setChoice] = useState(initial);
-  const chosen = family.find((m) => m.id === choice);
+  // Anyone can be down to bring a dish; it isn't signing in their name.
+  const people = family;
+  const chosen = people.find((m) => m.id === choice);
   const underline =
     "min-w-0 flex-1 appearance-none border-b border-dashed border-rule bg-transparent py-0.5 text-[1.35rem] focus:border-burgundy focus:outline-none";
   const dirty = choice !== initial;
@@ -104,7 +106,7 @@ export function PreparerForm({ item, family }: { item: MenuItem; family: FamilyM
           {...(chosen ? pen(chosen, underline) : { className: `hand ${underline} text-ink-faint` })}
         >
           <option value="">nobody yet</option>
-          {family.map((m) => (
+          {people.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
             </option>

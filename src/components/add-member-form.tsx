@@ -31,8 +31,12 @@ export function AddMemberForm({ family }: { family: FamilyMember[] }) {
   );
 }
 
-/** One person in the family list, with their pen open for changes. */
-export function MemberRow({ member, editable }: { member: FamilyMember; editable: boolean }) {
+/**
+ * One person in the family list, with their pen open for changes. Someone who
+ * has joined owns their pen: only they see "Change" (and RLS agrees).
+ */
+export function MemberRow({ member, signedIn }: { member: FamilyMember; signedIn: boolean }) {
+  const editable = signedIn && (!member.claimed || !!member.mine);
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState<FormState, FormData>(async (prev, fd) => {
     const result = await updateFamilyMember(prev, fd);
@@ -45,7 +49,8 @@ export function MemberRow({ member, editable }: { member: FamilyMember; editable
       <span {...pen(member, "text-[1.7rem] leading-none")}>{member.name}</span>
       <span className="flex items-baseline gap-3">
         {member.relation && <span className="eyebrow">{member.relation}</span>}
-        {editable && <span className="text-[0.88rem] text-burgundy">{open ? "Close" : "Change"}</span>}
+        {signedIn && member.claimed && !member.mine && <span className="text-[0.82rem] text-ink-faint italic">joined</span>}
+        {editable && <span className="text-[0.88rem] text-burgundy">{open ? "Close" : member.mine ? "Change your pen" : "Change"}</span>}
       </span>
     </span>
   );
